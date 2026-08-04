@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Surrogate Models Multi-Sector ESOM Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:wght@600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <p class="kicker">Paper Results Dashboard</p>
+        <h1>Surrogate Models for Multi-Sector ESOMs</h1>
+        <p class="subtitle">
+          Recreated figures and tables for regression, classifier-augmented, and informed joint-learning models.
+        </p>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="panel" id="overview-panel">
+        <div class="panel-head">
+          <h2>Model Overview</h2>
+          <p>Five model families mapped to your paper workflows.</p>
+        </div>
+        <div class="download-row">
+          <a class="btn" href="./data/regression_surrogate_run_log.csv" download>Download Regression Dataset (CSV)</a>
+          <a class="btn" href="./data/classifier_2fold_performance.csv" download>Download Classifier Dataset (CSV)</a>
+          <a class="btn" href="./data/joint_learning_informed_classifier_run_log.csv" download>Download Joint Learning Dataset (CSV)</a>
+        </div>
+        <div id="model-cards" class="cards"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Regression Methods: XGB vs MLP vs GP</h2>
+          <p>Data source: test regression methods/surrogate_run_log.csv</p>
+        </div>
+        <div class="grid-2">
+          <div class="chart-block">
+            <div class="chart-title-row">
+              <h3>NRMSE Distribution</h3>
+              <button id="download-regression-nrmse-png" class="btn btn-soft">Download PNG</button>
+            </div>
+            <div id="regression-boxplot" class="chart"></div>
+          </div>
+          <div class="chart-block">
+            <div class="chart-title-row">
+              <h3>RTA5 Distribution</h3>
+              <button id="download-regression-rta5-png" class="btn btn-soft">Download PNG</button>
+            </div>
+            <div id="regression-rta5-boxplot" class="chart"></div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="regression-summary-table"></table>
+        </div>
+        <div class="download-row compact">
+          <button id="download-regression-summary-csv" class="btn">Download Regression Summary Table (CSV)</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Effect of Adding Classifier</h2>
+          <p>Data source: effect adding classifier/2fold_performance.csv</p>
+        </div>
+
+        <div class="controls-row">
+          <label for="classifier-method-filter">Classifier method</label>
+          <select id="classifier-method-filter"></select>
+          <label for="heatmap-metric-filter">Heatmap metric</label>
+          <select id="heatmap-metric-filter">
+            <option value="nrmse">NRMSE</option>
+            <option value="nmae">NMAE</option>
+            <option value="RTA1pct">RTA1%</option>
+            <option value="RTA5pct" selected>RTA5%</option>
+            <option value="RTA10pct">RTA10%</option>
+          </select>
+          <button id="download-classifier-filtered-csv" class="btn">Download Filtered Classifier Data (CSV)</button>
+        </div>
+
+        <div class="chart-block">
+          <div class="chart-title-row">
+            <h3>Variable Type × Data Type Heatmap</h3>
+            <button id="download-classifier-heatmap-png" class="btn btn-soft">Download PNG</button>
+          </div>
+          <div id="classifier-heatmap" class="chart tall"></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="chart-block">
+            <h3>Classifier Accuracy by Variable Group</h3>
+            <div id="classifier-accuracy-bar" class="chart"></div>
+          </div>
+          <div class="chart-block">
+            <h3>Hybrid vs Regularized Accuracy (RTA5)</h3>
+            <div id="classifier-rta-scatter" class="chart"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Joint Learning: Informed Hybrid</h2>
+          <p>Data source: joint learning models/joint_learning_informed_classifier_run_log.csv</p>
+        </div>
+
+        <div class="grid-2">
+          <div class="chart-block">
+            <h3>NRMSE by Target Family</h3>
+            <div id="joint-family-bar" class="chart"></div>
+          </div>
+          <div class="chart-block">
+            <h3>RTA5 by Target Family</h3>
+            <div id="joint-family-rta" class="chart"></div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="joint-summary-table"></table>
+        </div>
+        <div class="download-row compact">
+          <button id="download-joint-summary-csv" class="btn">Download Joint Summary Table (CSV)</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Dashboard source data is bundled in ./data for direct static hosting on Netlify.</p>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

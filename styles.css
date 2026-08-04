@@ -1,0 +1,258 @@
+:root {
+  --ink: #232323;
+  --muted: #656565;
+  --accent: #cc5a1e;
+  --accent-soft: #fce5d0;
+  --card: #ffffff;
+  --line: #d8d8d8;
+  --bg: #f6f6f6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Source Sans 3", sans-serif;
+  color: var(--ink);
+  background: linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+  min-height: 100vh;
+}
+
+.hero {
+  position: relative;
+  padding: 3rem 1.2rem 2.2rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  background: linear-gradient(90deg, #fcf3e7 0%, #ffffff 48%, #eef5fb 100%);
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(120deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.38) 18px, rgba(255, 255, 255, 0) 18px, rgba(255, 255, 255, 0) 34px);
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.kicker {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+}
+
+h1 {
+  margin: 0.5rem 0 0;
+  font-family: "Source Serif 4", serif;
+  font-size: clamp(1.7rem, 4vw, 3rem);
+  line-height: 1.08;
+}
+
+.subtitle {
+  margin-top: 1rem;
+  max-width: 760px;
+  color: var(--muted);
+  font-size: 1.03rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 1.6rem auto 2.8rem;
+  padding: 0 1rem;
+  display: grid;
+  gap: 1.1rem;
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 8px 20px rgba(20, 20, 20, 0.06);
+  animation: rise 0.45s ease both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.panel-head p {
+  margin: 0.4rem 0 0.9rem;
+  color: var(--muted);
+}
+
+.cards {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.card {
+  border: 1px solid rgba(204, 90, 30, 0.3);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff8f2 0%, #ffffff 100%);
+  padding: 0.8rem;
+}
+
+.card h3 {
+  margin: 0;
+  font-size: 0.93rem;
+}
+
+.card .metric {
+  font-family: "IBM Plex Mono", monospace;
+  margin-top: 0.45rem;
+  font-size: 0.95rem;
+  color: #a2330f;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+}
+
+.chart-block {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: #fff;
+}
+
+.chart-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.chart-block h3 {
+  margin: 0 0 0.55rem;
+  font-size: 1rem;
+}
+
+.chart {
+  width: 100%;
+  min-height: 330px;
+}
+
+.chart.tall {
+  min-height: 620px;
+}
+
+.table-wrap {
+  margin-top: 0.95rem;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+th,
+td {
+  padding: 0.48rem 0.52rem;
+  border-bottom: 1px solid #e7eaef;
+  text-align: left;
+}
+
+th {
+  font-weight: 700;
+  color: #1f2a37;
+  background: #f7f7f7;
+}
+
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+label {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+select {
+  border: 1px solid #b8c4cf;
+  border-radius: 6px;
+  padding: 0.36rem 0.5rem;
+  font-family: "Source Sans 3", sans-serif;
+  background: white;
+}
+
+.download-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 0.2rem 0 0.9rem;
+}
+
+.download-row.compact {
+  margin-top: 0.75rem;
+}
+
+.btn {
+  border: 1px solid #c5c5c5;
+  background: #f9f9f9;
+  color: #1e1e1e;
+  border-radius: 6px;
+  padding: 0.34rem 0.56rem;
+  cursor: pointer;
+  font-size: 0.86rem;
+  text-decoration: none;
+  transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.btn:hover {
+  background: #fff1e8;
+  border-color: #e3a67f;
+  transform: translateY(-1px);
+}
+
+.btn.btn-soft {
+  background: #fff5ed;
+  border-color: #efbe9c;
+}
+
+.footer {
+  text-align: center;
+  color: var(--muted);
+  padding: 0.8rem 1rem 1.5rem;
+}
+
+@media (min-width: 960px) {
+  .grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .panel {
+    padding: 1.25rem;
+  }
+}
