@@ -72,12 +72,74 @@ h1 {
   gap: 1.1rem;
 }
 
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  border: 1px solid #c5c5c5;
+  background: #ffffff;
+  color: #2a2a2a;
+  border-radius: 999px;
+  padding: 0.44rem 0.85rem;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: #2e5c89;
+  border-color: #2e5c89;
+  color: #ffffff;
+}
+
+.tab-panel {
+  display: none;
+  gap: 1.1rem;
+}
+
+.tab-panel.active {
+  display: grid;
+}
+
+.subchapter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.subchapter-btn {
+  border: 1px solid #ccd5df;
+  background: #ffffff;
+  color: #1f2a37;
+  border-radius: 8px;
+  padding: 0.42rem 0.72rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.subchapter-btn.active {
+  background: #edf3fb;
+  border-color: #6f9bc2;
+  color: #133655;
+}
+
+.insights-chapter {
+  display: none;
+  gap: 1.1rem;
+}
+
+.insights-chapter.active {
+  display: grid;
+}
+
 .panel {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 1rem;
-  box-shadow: 0 8px 20px rgba(20, 20, 20, 0.06);
+  padding: 1.1rem;
+  box-shadow: 0 6px 16px rgba(15, 23, 32, 0.06);
   animation: rise 0.45s ease both;
 }
 
@@ -109,9 +171,9 @@ h1 {
 }
 
 .card {
-  border: 1px solid rgba(204, 90, 30, 0.3);
+  border: 1px solid #e3e8ef;
   border-radius: 8px;
-  background: linear-gradient(180deg, #fff8f2 0%, #ffffff 100%);
+  background: linear-gradient(180deg, #fcfdff 0%, #ffffff 100%);
   padding: 0.8rem;
 }
 
@@ -124,7 +186,7 @@ h1 {
   font-family: "IBM Plex Mono", monospace;
   margin-top: 0.45rem;
   font-size: 0.95rem;
-  color: #a2330f;
+  color: #274c77;
 }
 
 .grid-2 {
@@ -133,11 +195,23 @@ h1 {
   gap: 0.9rem;
 }
 
+.regression-figure {
+  min-height: 760px;
+}
+
 .chart-block {
   border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 8px;
   padding: 0.75rem;
   background: #fff;
+}
+
+#average-metrics-table th {
+  background: #edf3fb;
+}
+
+#average-metrics-table td:first-child {
+  font-weight: 700;
 }
 
 .chart-title-row {
@@ -207,6 +281,38 @@ select {
   background: white;
 }
 
+#datasheet-method-filter[multiple] {
+  min-width: 240px;
+  height: 6.8rem;
+  padding: 0.3rem;
+}
+
+#training-target-select[multiple] {
+  min-width: 420px;
+  max-width: 100%;
+  width: 100%;
+  height: 15rem;
+  padding: 0.3rem;
+}
+
+#training-variable-type-filter[multiple] {
+  min-width: 300px;
+  height: 9.2rem;
+  padding: 0.3rem;
+}
+
+.training-chart {
+  min-height: 640px;
+}
+
+.text-input {
+  border: 1px solid #b8c4cf;
+  border-radius: 6px;
+  padding: 0.38rem 0.54rem;
+  font-family: "Source Sans 3", sans-serif;
+  min-width: 220px;
+}
+
 .download-row {
   display: flex;
   flex-wrap: wrap;
@@ -239,6 +345,108 @@ select {
 .btn.btn-soft {
   background: #fff5ed;
   border-color: #efbe9c;
+}
+
+.datasheet-summary {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin-bottom: 0.5rem;
+}
+
+.datasheet-hint {
+  color: #6d737a;
+  font-size: 0.82rem;
+  margin: -0.2rem 0 0.5rem;
+}
+
+.comparison-grid {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 0.7rem;
+}
+
+.compare-block {
+  border: 1px solid #dfe6ee;
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: #ffffff;
+}
+
+.compare-block h3 {
+  margin: 0 0 0.55rem;
+  font-size: 1.02rem;
+}
+
+#overview-conventional-table th,
+#overview-xgb-vs-clf-table th,
+#overview-clf-vs-informed-table th {
+  background: #edf3fb;
+}
+
+.datasheet-wrap {
+  max-height: 68vh;
+  overflow: auto;
+  border: 1px solid #e4e8ec;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.datasheet-wrap table {
+  min-width: 1300px;
+  table-layout: auto;
+  font-size: 0.84rem;
+}
+
+.datasheet-wrap th,
+.datasheet-wrap td {
+  white-space: nowrap;
+}
+
+.datasheet-wrap th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.datasheet-wrap tbody tr:nth-child(even) {
+  background: #fcfdff;
+}
+
+.datasheet-wrap tbody tr:hover {
+  background: #f2f7ff;
+}
+
+.datasheet-pager {
+  margin-top: 0.8rem;
+}
+
+.mono-text {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.84rem;
+}
+
+.method-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.method-card {
+  border: 1px solid #dfe5ea;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 0.85rem;
+}
+
+.method-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.method-card p {
+  margin: 0.45rem 0 0.65rem;
+  color: #5f6670;
+  font-size: 0.9rem;
 }
 
 .footer {

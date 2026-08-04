@@ -24,112 +24,304 @@
     </header>
 
     <main class="container">
-      <section class="panel" id="overview-panel">
-        <div class="panel-head">
-          <h2>Model Overview</h2>
-          <p>Five model families mapped to your paper workflows.</p>
-        </div>
-        <div class="download-row">
-          <a class="btn" href="./data/regression_surrogate_run_log.csv" download>Download Regression Dataset (CSV)</a>
-          <a class="btn" href="./data/classifier_2fold_performance.csv" download>Download Classifier Dataset (CSV)</a>
-          <a class="btn" href="./data/joint_learning_informed_classifier_run_log.csv" download>Download Joint Learning Dataset (CSV)</a>
-        </div>
-        <div id="model-cards" class="cards"></div>
-      </section>
+      <nav class="tabs" role="tablist" aria-label="Dashboard Tabs">
+        <button class="tab-btn" data-tab-target="tab-training" role="tab" aria-selected="false">Training data</button>
+        <button class="tab-btn active" data-tab-target="tab-insights" role="tab" aria-selected="true">Results Dashboard</button>
+        <button class="tab-btn" data-tab-target="tab-datasheets" role="tab" aria-selected="false">Full Results Datasheets</button>
+        <button class="tab-btn" data-tab-target="tab-method-code" role="tab" aria-selected="false">Method Code</button>
+      </nav>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Regression Methods: XGB vs MLP vs GP</h2>
-          <p>Data source: test regression methods/surrogate_run_log.csv</p>
-        </div>
-        <div class="grid-2">
-          <div class="chart-block">
-            <div class="chart-title-row">
-              <h3>NRMSE Distribution</h3>
-              <button id="download-regression-nrmse-png" class="btn btn-soft">Download PNG</button>
+      <div id="tab-insights" class="tab-panel active" role="tabpanel">
+        <nav class="subchapter-tabs" role="tablist" aria-label="Insights Subchapters">
+          <button class="subchapter-btn active" data-chapter-target="chapter-regression" role="tab" aria-selected="true">
+            1. Regression Methods (GP, MLP, XGB)
+          </button>
+          <button class="subchapter-btn" data-chapter-target="chapter-classifier" role="tab" aria-selected="false">
+            2. XGB + Classifier
+          </button>
+          <button class="subchapter-btn" data-chapter-target="chapter-informed" role="tab" aria-selected="false">
+            3. Informed Classifier
+          </button>
+        </nav>
+
+        <div id="chapter-regression" class="insights-chapter active" role="tabpanel">
+          <section class="panel" id="overview-panel">
+            <div class="panel-head">
+              <h2>Subchapter 1: GP vs MLP vs XGB</h2>
+              <p>Focused comparison for conventional regression methods.</p>
             </div>
-            <div id="regression-boxplot" class="chart"></div>
-          </div>
-          <div class="chart-block">
-            <div class="chart-title-row">
-              <h3>RTA5 Distribution</h3>
-              <button id="download-regression-rta5-png" class="btn btn-soft">Download PNG</button>
+            <div class="controls-row">
+              <label for="common-target-mode">Data alignment</label>
+              <select id="common-target-mode">
+                <option value="all" selected>Use all available targets per method</option>
+                <option value="common">Only targets that appear in all methods</option>
+              </select>
             </div>
-            <div id="regression-rta5-boxplot" class="chart"></div>
+            <div id="common-target-note" class="datasheet-hint"></div>
+
+            <div class="comparison-grid">
+              <section class="compare-block">
+                <h3>1. Conventional Regression: GP vs MLP vs XGB</h3>
+                <div class="table-wrap">
+                  <table id="overview-conventional-table"></table>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Regression Methods: XGB vs MLP vs GP</h2>
+              <p>Data source: test regression methods/surrogate_run_log.csv</p>
+            </div>
+            <div class="chart-block">
+              <div id="regression-metrics-subplots" class="chart regression-figure"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Correlation Between Accuracy Metrics: XGB vs MLP vs GP</h2>
+              <p>Pairwise method correlations across NRMSE, NMAE, RTA1%, RTA5%, and RTA10%.</p>
+            </div>
+            <div class="table-wrap">
+              <table id="regression-correlation-table"></table>
+            </div>
+          </section>
+        </div>
+
+        <div id="chapter-classifier" class="insights-chapter" role="tabpanel" aria-hidden="true">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Subchapter 2: XGB vs XGB+classifier</h2>
+              <p>Pairwise comparison and detailed classifier analysis.</p>
+            </div>
+            <div class="comparison-grid">
+              <section class="compare-block">
+                <h3>2. XGB vs XGB+classifier</h3>
+                <div class="controls-row">
+                  <label for="recurring-only-mode">Target type (applies to section 2)</label>
+                  <select id="recurring-only-mode">
+                    <option value="all" selected>All target variables</option>
+                    <option value="recurring">Target variables with recurring values only</option>
+                  </select>
+                </div>
+                <div class="table-wrap">
+                  <table id="overview-xgb-vs-clf-table"></table>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Effect of Adding Classifier</h2>
+              <p>Data source: effect adding classifier/2fold_performance.csv</p>
+            </div>
+
+            <div class="controls-row">
+              <label for="classifier-method-filter">Classifier method</label>
+              <select id="classifier-method-filter"></select>
+              <label for="heatmap-metric-filter">Heatmap metric</label>
+              <select id="heatmap-metric-filter">
+                <option value="nrmse">NRMSE</option>
+                <option value="nmae">NMAE</option>
+                <option value="RTA1pct">RTA1%</option>
+                <option value="RTA5pct" selected>RTA5%</option>
+                <option value="RTA10pct">RTA10%</option>
+              </select>
+            </div>
+
+            <div class="chart-block">
+              <div class="chart-title-row">
+                <h3>Variable Type × Data Type Heatmap</h3>
+              </div>
+              <div id="classifier-heatmap" class="chart tall"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Classifier Performance Details</h2>
+              <p>Additional diagnostics for the selected classifier method.</p>
+            </div>
+            <div class="grid-2">
+              <div class="chart-block">
+                <h3>Classifier Accuracy by Variable Group</h3>
+                <div id="classifier-accuracy-bar" class="chart"></div>
+              </div>
+              <div class="chart-block">
+                <h3>Hybrid vs Regularized Accuracy (RTA5)</h3>
+                <div id="classifier-rta-scatter" class="chart"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div id="chapter-informed" class="insights-chapter" role="tabpanel" aria-hidden="true">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Subchapter 3: XGB+classifier vs informed_classifier</h2>
+              <p>Pairwise comparison and informed joint-learning analysis.</p>
+            </div>
+            <div class="comparison-grid">
+              <section class="compare-block">
+                <h3>3. XGB+classifier vs informed_classifier</h3>
+                <div class="table-wrap">
+                  <table id="overview-clf-vs-informed-table"></table>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Joint Learning: Informed Hybrid</h2>
+              <p>Data source: joint learning models/joint_learning_informed_classifier_run_log.csv</p>
+            </div>
+
+            <div class="grid-2">
+              <div class="chart-block">
+                <h3>NRMSE by Target Family</h3>
+                <div id="joint-family-bar" class="chart"></div>
+              </div>
+              <div class="chart-block">
+                <h3>RTA5 by Target Family</h3>
+                <div id="joint-family-rta" class="chart"></div>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table id="joint-summary-table"></table>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div id="tab-training" class="tab-panel" role="tabpanel" aria-hidden="true">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Training Data Value Distributions</h2>
+            <p>Target variables with variation: <span id="training-target-count">0</span>. Select variables to inspect output value distributions.</p>
           </div>
-        </div>
-        <div class="table-wrap">
-          <table id="regression-summary-table"></table>
-        </div>
-        <div class="download-row compact">
-          <button id="download-regression-summary-csv" class="btn">Download Regression Summary Table (CSV)</button>
-        </div>
-      </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Effect of Adding Classifier</h2>
-          <p>Data source: effect adding classifier/2fold_performance.csv</p>
-        </div>
-
-        <div class="controls-row">
-          <label for="classifier-method-filter">Classifier method</label>
-          <select id="classifier-method-filter"></select>
-          <label for="heatmap-metric-filter">Heatmap metric</label>
-          <select id="heatmap-metric-filter">
-            <option value="nrmse">NRMSE</option>
-            <option value="nmae">NMAE</option>
-            <option value="RTA1pct">RTA1%</option>
-            <option value="RTA5pct" selected>RTA5%</option>
-            <option value="RTA10pct">RTA10%</option>
-          </select>
-          <button id="download-classifier-filtered-csv" class="btn">Download Filtered Classifier Data (CSV)</button>
-        </div>
-
-        <div class="chart-block">
-          <div class="chart-title-row">
-            <h3>Variable Type × Data Type Heatmap</h3>
-            <button id="download-classifier-heatmap-png" class="btn btn-soft">Download PNG</button>
+          <div class="controls-row">
+            <label for="training-variable-type-filter">Variable type</label>
+            <select id="training-variable-type-filter" multiple size="6" aria-label="Training variable type filter"></select>
+            <label for="training-target-search">Search target variable</label>
+            <input id="training-target-search" class="text-input" type="text" placeholder="Type to filter outcomes..." />
+            <button id="training-select-all" class="btn" type="button">Select all shown</button>
+            <button id="training-clear" class="btn" type="button">Clear selection</button>
           </div>
-          <div id="classifier-heatmap" class="chart tall"></div>
-        </div>
+          <div class="datasheet-hint">Tip: use Ctrl/Command + click to select multiple variable types.</div>
 
-        <div class="grid-2">
+          <div class="controls-row">
+            <label for="training-target-select">Target variable selection</label>
+            <select id="training-target-select" multiple size="12" aria-label="Training target variable selector"></select>
+          </div>
+
+          <div id="training-selection-note" class="datasheet-hint"></div>
+
           <div class="chart-block">
-            <h3>Classifier Accuracy by Variable Group</h3>
-            <div id="classifier-accuracy-bar" class="chart"></div>
+            <div id="training-distribution-plot" class="chart training-chart"></div>
           </div>
-          <div class="chart-block">
-            <h3>Hybrid vs Regularized Accuracy (RTA5)</h3>
-            <div id="classifier-rta-scatter" class="chart"></div>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Joint Learning: Informed Hybrid</h2>
-          <p>Data source: joint learning models/joint_learning_informed_classifier_run_log.csv</p>
-        </div>
-
-        <div class="grid-2">
-          <div class="chart-block">
-            <h3>NRMSE by Target Family</h3>
-            <div id="joint-family-bar" class="chart"></div>
+      <div id="tab-datasheets" class="tab-panel" role="tabpanel" aria-hidden="true">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Full Results Datasheets</h2>
+            <p>Browse complete CSV results with search and pagination.</p>
           </div>
-          <div class="chart-block">
-            <h3>RTA5 by Target Family</h3>
-            <div id="joint-family-rta" class="chart"></div>
+          <div class="controls-row">
+            <label for="datasheet-select">Surrogate method</label>
+            <select id="datasheet-select">
+              <option value="regression">Regression results</option>
+              <option value="classifier">Classifier results</option>
+              <option value="joint">Joint-learning results</option>
+            </select>
+            <label for="datasheet-method-filter">Dataset</label>
+            <select id="datasheet-method-filter" multiple size="4" aria-label="Dataset multi-select filter">
+            </select>
+            <label for="datasheet-search">Search</label>
+            <input id="datasheet-search" class="text-input" type="text" placeholder="Filter rows by any value..." />
+            <label for="datasheet-page-size">Rows per page</label>
+            <select id="datasheet-page-size">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="250">250</option>
+            </select>
           </div>
-        </div>
+          <div class="datasheet-hint">Tip: use Ctrl/Command + click to select multiple Dataset filters.</div>
+          <div id="datasheet-summary" class="datasheet-summary"></div>
+          <div class="table-wrap datasheet-wrap">
+            <table id="datasheet-table"></table>
+          </div>
+          <div class="controls-row datasheet-pager">
+            <button id="datasheet-prev" class="btn">Previous</button>
+            <span id="datasheet-page-info" class="mono-text"></span>
+            <button id="datasheet-next" class="btn">Next</button>
+          </div>
+        </section>
+      </div>
 
-        <div class="table-wrap">
-          <table id="joint-summary-table"></table>
-        </div>
-        <div class="download-row compact">
-          <button id="download-joint-summary-csv" class="btn">Download Joint Summary Table (CSV)</button>
-        </div>
-      </section>
+      <div id="tab-method-code" class="tab-panel" role="tabpanel" aria-hidden="true">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Method Code</h2>
+            <p>Standalone surrogate method scripts available for inspection and download.</p>
+          </div>
+
+          <div class="method-grid">
+            <article class="method-card">
+              <h3>XGB.py</h3>
+              <p>Single-target XGBoost baseline regression method.</p>
+              <div class="download-row compact">
+                <a class="btn" href="./methods/XGB.py" download>Download</a>
+                <a class="btn btn-soft" href="./methods/XGB.py" target="_blank" rel="noopener">View</a>
+              </div>
+            </article>
+
+            <article class="method-card">
+              <h3>MLP.py</h3>
+              <p>MLP autoencoder-based surrogate regression method.</p>
+              <div class="download-row compact">
+                <a class="btn" href="./methods/MLP.py" download>Download</a>
+                <a class="btn btn-soft" href="./methods/MLP.py" target="_blank" rel="noopener">View</a>
+              </div>
+            </article>
+
+            <article class="method-card">
+              <h3>GP.py</h3>
+              <p>Gaussian Process surrogate model implementation.</p>
+              <div class="download-row compact">
+                <a class="btn" href="./methods/GP.py" download>Download</a>
+                <a class="btn btn-soft" href="./methods/GP.py" target="_blank" rel="noopener">View</a>
+              </div>
+            </article>
+
+            <article class="method-card">
+              <h3>XGB+classifier.py</h3>
+              <p>Hybrid classifier-regressor XGBoost method.</p>
+              <div class="download-row compact">
+                <a class="btn" href="./methods/XGB_plus_classifier.py" download>Download</a>
+                <a class="btn btn-soft" href="./methods/XGB_plus_classifier.py" target="_blank" rel="noopener">View</a>
+              </div>
+            </article>
+
+            <article class="method-card">
+              <h3>xgb_informed_classifier.py</h3>
+              <p>Informed joint-learning variant using classifier guidance.</p>
+              <div class="download-row compact">
+                <a class="btn" href="./methods/xgb_informed_classifier.py" download>Download</a>
+                <a class="btn btn-soft" href="./methods/xgb_informed_classifier.py" target="_blank" rel="noopener">View</a>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
     </main>
 
     <footer class="footer">
