@@ -5,8 +5,9 @@ import numpy as np
 import pandas as pd
 
 
-SOURCE_PARQUET = Path("e:/Surrogate_model_test_runs/surrogate_test_sabine/data/SSEREP 10K/Model_Results.parquet")
-OUTPUT_JSON = Path("e:/Surrogate_model_test_runs/surrogate_models_multi-sector_ESOM/data/training_value_distributions.json")
+REPO_ROOT = Path(__file__).resolve().parent
+SOURCE_PARQUET = REPO_ROOT / "data" / "SSEREP 10K" / "Model_Results.parquet"
+OUTPUT_JSON = REPO_ROOT / "data" / "training_value_distributions.json"
 
 
 def safe_float(value):
