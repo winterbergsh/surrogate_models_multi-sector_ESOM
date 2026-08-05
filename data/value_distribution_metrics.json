@@ -1,0 +1,50 @@
+{
+  "source_file": "results_raw_data_with_category_division.xlsx",
+  "source_sheet": "Correlations",
+  "source_filter": "Dominant spike = No",
+  "order": [
+    "Normal",
+    "Skewed",
+    "Uniform",
+    "Multi regime"
+  ],
+  "category_rules": "Uniform = Uniform only; Multi regime = Bimodal + Multimodal + Two-level uniform + 2-level uniform; excluded from this figure: Discrete and Too little continuous data; only rows without dominant spike are included",
+  "categories": [
+    {
+      "name": "Normal",
+      "n": 28,
+      "nrmse": 0.3232651095909591,
+      "nmae": 0.23171846884521827,
+      "rta1_pct": 26.61224489642854,
+      "rta5_pct": 72.58418367346934,
+      "rta10_pct": 89.70918367346934
+    },
+    {
+      "name": "Skewed",
+      "n": 48,
+      "nrmse": 0.3956832762466444,
+      "nmae": 0.2659000581660086,
+      "rta1_pct": 12.589285712499976,
+      "rta5_pct": 47.34821428541662,
+      "rta10_pct": 71.37648809523806
+    },
+    {
+      "name": "Uniform",
+      "n": 29,
+      "nrmse": 0.023348436884312047,
+      "nmae": 0.01220096208764843,
+      "rta1_pct": 93.99753694581278,
+      "rta5_pct": 98.6822660098522,
+      "rta10_pct": 99.43349753694581
+    },
+    {
+      "name": "Multi regime",
+      "n": 32,
+      "nrmse": 0.3728535689512982,
+      "nmae": 0.265692559960941,
+      "rta1_pct": 21.745535712499976,
+      "rta5_pct": 52.453124999999964,
+      "rta10_pct": 69.51785714285711
+    }
+  ]
+}

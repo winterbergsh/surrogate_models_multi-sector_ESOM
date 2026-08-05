@@ -90,6 +90,17 @@
               <table id="regression-correlation-table"></table>
             </div>
           </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Cross-Validation Fold Sensitivity (XGB)</h2>
+              <p>Comparison of 5-fold and 7-fold results against the 6-fold XGB baseline.</p>
+            </div>
+            <div class="table-wrap">
+              <table id="regression-fold-sensitivity-table"></table>
+            </div>
+          </section>
+
         </div>
 
         <div id="chapter-classifier" class="insights-chapter" role="tabpanel" aria-hidden="true">
@@ -125,6 +136,22 @@
               <div id="xgb-clf-metrics-note" class="datasheet-hint"></div>
             </div>
           </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h2>Boundary Sensitivity (XGB+classifier)</h2>
+                <p>Average metric values for classifier-regressor boundaries X=10, 20, 30, and 40.</p>
+              </div>
+              <div class="controls-row">
+                <label for="boundary-target-filter">Target inclusion</label>
+                <select id="boundary-target-filter">
+                  <option value="all" selected>All target variables</option>
+                  <option value="recurring">Only targets with recurring values (boundary X=10 type rule)</option>
+                </select>
+              </div>
+              <div class="table-wrap">
+                <table id="boundary-sensitivity-metrics-table"></table>
+              </div>
+            </section>
 
         </div>
 
@@ -184,6 +211,59 @@
             <div class="chart-block">
               <div id="classifier-accuracy-bar" class="chart"></div>
               <div id="classifier-accuracy-bar-note" class="datasheet-hint"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Performance by Model-Output Level</h2>
+              <p>Average metrics across technology-level, subsystem-level, and system-level target groups.</p>
+            </div>
+            <div class="table-wrap">
+              <table id="performance-level-metrics-table"></table>
+            </div>
+            <div id="performance-level-metrics-note" class="datasheet-hint"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Table 14. Results for Output Type Comparison</h2>
+              <p>Average performance metrics for direct outputs versus post-processed outputs.</p>
+            </div>
+            <div class="table-wrap">
+              <table id="output-type-comparison-table"></table>
+            </div>
+            <div id="output-type-comparison-note" class="datasheet-hint"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Table 16. Pearson Correlation Matrix (Classifier-Regressor)</h2>
+              <p>Correlation matrix across performance, timing, target spread, value-count structure, and classifier accuracy.</p>
+            </div>
+            <div class="controls-row">
+              <label for="corr-data-type-filter">Target data type</label>
+              <select id="corr-data-type-filter">
+                <option value="all" selected>All target variables</option>
+                <option value="continuous">Continuous only</option>
+                <option value="semi">Semi-continuous only</option>
+                <option value="discrete">Discrete only</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table id="classifier-correlation-matrix-table"></table>
+            </div>
+            <div id="classifier-correlation-matrix-note" class="datasheet-hint"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Figure 1. Average Accuracy by Value Distribution Type</h2>
+              <p>For NRMSE and NMAE, lower is better (left axis). For RTA1%, RTA5%, and RTA10%, higher is better (right axis).</p>
+            </div>
+            <div class="chart-block">
+              <div id="value-distribution-accuracy-chart" class="chart"></div>
+              <div id="value-distribution-accuracy-note" class="datasheet-hint"></div>
             </div>
           </section>
         </div>
@@ -308,6 +388,9 @@
             <p>Browse complete CSV results with search and pagination.</p>
           </div>
           <div class="controls-row">
+            <a class="btn" href="./data/results_raw_data_with_category_division.xlsx" download>Download Results Raw Data (with Category Division)</a>
+          </div>
+          <div class="controls-row">
             <label for="datasheet-select">Surrogate method</label>
             <select id="datasheet-select">
               <option value="regression">Regression results</option>
@@ -401,6 +484,6 @@
       <p>Dashboard source data is bundled in ./data for direct static hosting on Netlify.</p>
     </footer>
 
-    <script src="./app.js"></script>
+    <script src="./app.js?v=20260805h"></script>
   </body>
 </html>

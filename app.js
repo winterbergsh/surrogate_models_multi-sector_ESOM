@@ -150,6 +150,13 @@ async function loadJSON(path) {
 }
 
 function toNum(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (!s || s === "nan" || s === "null" || s === "none" || s === "na") {
+      return null;
+    }
+  }
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
@@ -558,6 +565,289 @@ function escapeHTML(text) {
     .replace(/>/g, "&gt;")
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function buildFoldSensitivityRows(regRows) {
+  const methodMap = {
+    "5-fold cross-validation": "XGB_single_5fold",
+    "6-fold cross-validation": "XGB_single",
+    "7-fold cross-validation": "XGB_single_7-fold",
+  };
+
+  const baselineLabel = "6-fold cross-validation";
+  const baselineMethod = methodMap[baselineLabel];
+
+  function rowsForMethod(methodName) {
+    return dedupeRowsByTarget(regRows.filter((r) => String(r.surrogate_method || "") === methodName));
+  }
+
+  const baselineRows = rowsForMethod(baselineMethod);
+  const baselineByTarget = new Map(
+    baselineRows.map((r) => [normalizeTargetName(r.target_variable), r]).filter(([k]) => Boolean(k))
+  );
+
+  function foldPercentages(k) {
+    const trainValPoolPct = 85;
+    const trainPct = (trainValPoolPct * (k - 1)) / k;
+    const valPct = trainValPoolPct / k;
+    return {
+      train: `${Math.round(trainPct)}%`,
+      validation: `${Math.round(valPct)}%`,
+    };
+  }
+
+  function fmtDeltaTimes10Minus4(value) {
+    if (!Number.isFinite(value)) return "-";
+    const scaled = value * 1e4;
+    const sign = scaled > 0 ? "+" : "-";
+    return `${sign} ${fmt(Math.abs(scaled), 1)} x 10^-4`;
+  }
+
+  function buildComparison(altRows) {
+    const pairs = [];
+    for (const row of altRows) {
+      const key = normalizeTargetName(row.target_variable);
+      if (!key || !baselineByTarget.has(key)) continue;
+      pairs.push({ base: baselineByTarget.get(key), alt: row });
+    }
+
+    const baseNrmse = pairs.map((p) => toNum(p.base.nrmse)).filter((v) => v !== null);
+    const altNrmse = pairs.map((p) => toNum(p.alt.nrmse)).filter((v) => v !== null);
+    const baseNmae = pairs.map((p) => toNum(p.base.nmae)).filter((v) => v !== null);
+    const altNmae = pairs.map((p) => toNum(p.alt.nmae)).filter((v) => v !== null);
+
+    const nrmseDelta = mean(altNrmse) - mean(baseNrmse);
+    const nmaeDelta = mean(altNmae) - mean(baseNmae);
+
+    const differentSettings = pairs.filter((p) => String(p.base.hyperparameters || "") !== String(p.alt.hyperparameters || "")).length;
+
+    return {
+      nrmseDelta,
+      nmaeDelta,
+      differentSettings,
+    };
+  }
+
+  const rows = [
+    {
+      label: "5-fold cross-validation",
+      ...foldPercentages(5),
+      ...buildComparison(rowsForMethod(methodMap["5-fold cross-validation"])),
+    },
+    {
+      label: "6-fold cross-validation",
+      ...foldPercentages(6),
+      nrmseDelta: null,
+      nmaeDelta: null,
+      differentSettings: null,
+    },
+    {
+      label: "7-fold cross-validation",
+      ...foldPercentages(7),
+      ...buildComparison(rowsForMethod(methodMap["7-fold cross-validation"])),
+    },
+  ];
+
+  return rows.map((r) => ({
+    method: r.label,
+    train: r.train,
+    validation: r.validation,
+    nrmse: r.nrmseDelta === null ? "-" : fmtDeltaTimes10Minus4(r.nrmseDelta),
+    nmae: r.nmaeDelta === null ? "-" : fmtDeltaTimes10Minus4(r.nmaeDelta),
+    settings: r.differentSettings === null ? "-" : String(r.differentSettings),
+  }));
+}
+
+function renderFoldSensitivityTable(regRows) {
+  const table = document.getElementById("regression-fold-sensitivity-table");
+  if (!table) return;
+
+  const rows = buildFoldSensitivityRows(regRows);
+  table.innerHTML = [
+    "<thead><tr><th>Cross-validation method</th><th>Percentage training data</th><th>Percentage validation data</th><th>Change in average NMRSE</th><th>Change in average NMAE</th><th>Amount of target variables different model settings chosen compared to 6-fold method</th></tr></thead>",
+    "<tbody>",
+    ...rows.map(
+      (r) => `<tr><td>${escapeHTML(r.method)}</td><td>${escapeHTML(r.train)}</td><td>${escapeHTML(r.validation)}</td><td>${escapeHTML(r.nrmse)}</td><td>${escapeHTML(r.nmae)}</td><td>${escapeHTML(r.settings)}</td></tr>`
+    ),
+    "</tbody>",
+  ].join("");
+}
+
+function renderBoundarySensitivityTable(classifierRows) {
+  const table = document.getElementById("boundary-sensitivity-metrics-table");
+  if (!table) return;
+  const filterSelect = document.getElementById("boundary-target-filter");
+
+  const methodDefs = [
+    { label: "X=10", method: "XGB_HYBRID10_tuned" },
+    { label: "X=20", method: "XGB_HYBRID_tuned" },
+    { label: "X=30", method: "XGB_HYBRID30_tuned" },
+    { label: "X=40", method: "XGB_HYBRID40_tuned" },
+  ];
+
+  const rowsByMethod = Object.fromEntries(
+    methodDefs.map((m) => [m.label, dedupeRowsByTarget((classifierRows || []).filter((r) => String(r.surrogate_method || "") === m.method))])
+  );
+
+  const targetSets = methodDefs.map((m) => new Set(rowsByMethod[m.label].map((r) => normalizeTargetName(r.target_variable)).filter(Boolean)));
+  const commonTargets = targetSets.reduce((acc, set, idx) => {
+    if (idx === 0) return new Set(set);
+    return new Set([...acc].filter((t) => set.has(t)));
+  }, new Set());
+
+  const alignedRowsByMethod = Object.fromEntries(
+    methodDefs.map((m) => [
+      m.label,
+      rowsByMethod[m.label].filter((r) => commonTargets.has(normalizeTargetName(r.target_variable))),
+    ])
+  );
+
+  function getFilteredTargets(mode) {
+    if (mode !== "recurring") return new Set(commonTargets);
+
+    // Use boundary X=10 as the recurring baseline (lowest boundary):
+    // recurring-type targets are discrete or semi-continuous under that setting.
+    const recurringTargets = new Set();
+    (alignedRowsByMethod["X=10"] || []).forEach((r) => {
+      const regCat = toNum(r.REG_cat);
+      const clasCat = toNum(r.CLAS_cat);
+      const target = normalizeTargetName(r.target_variable);
+      if (!target) return;
+      const isDiscrete = regCat !== null && regCat === 0;
+      const isSemiContinuous = regCat !== null && clasCat !== null && regCat > 0 && clasCat > 0;
+      if (isDiscrete || isSemiContinuous) {
+        recurringTargets.add(target);
+      }
+    });
+    return recurringTargets;
+  }
+
+  function renderWithMode(mode) {
+    const targetSet = getFilteredTargets(mode);
+    const filteredRowsByMethod = Object.fromEntries(
+      methodDefs.map((m) => [
+        m.label,
+        alignedRowsByMethod[m.label].filter((r) => targetSet.has(normalizeTargetName(r.target_variable))),
+      ])
+    );
+
+    function avg(label, key, scale = 1) {
+      return averageMetric(filteredRowsByMethod[label], key, scale);
+    }
+
+    const metricRows = [
+      {
+        metric: "NRMSE",
+        values: methodDefs.map((m) => {
+          const v = avg(m.label, "nrmse", 1);
+          return v === null ? "-" : fmt(v, 2);
+        }),
+      },
+      {
+        metric: "NMAE",
+        values: methodDefs.map((m) => {
+          const v = avg(m.label, "nmae", 1);
+          return v === null ? "-" : fmt(v, 2);
+        }),
+      },
+      {
+        metric: "RTA1%",
+        values: methodDefs.map((m) => {
+          const v = avg(m.label, "RTA1pct", 100);
+          return v === null ? "-" : `${fmt(v, 1)}%`;
+        }),
+      },
+      {
+        metric: "RTA5%",
+        values: methodDefs.map((m) => {
+          const v = avg(m.label, "RTA5pct", 100);
+          return v === null ? "-" : `${fmt(v, 1)}%`;
+        }),
+      },
+      {
+        metric: "RTA10%",
+        values: methodDefs.map((m) => {
+          const v = avg(m.label, "RTA10pct", 100);
+          return v === null ? "-" : `${fmt(v, 1)}%`;
+        }),
+      },
+    ];
+
+    const modeLabel = mode === "recurring"
+      ? "targets with recurring values by X=10 type rule (discrete or semi-continuous)"
+      : "shared target variables across X=10/20/30/40 methods";
+
+    table.innerHTML = [
+      `<thead><tr><th></th>${methodDefs.map((m) => `<th>${escapeHTML(m.label)}</th>`).join("")}</tr></thead>`,
+      "<tbody>",
+      ...metricRows.map((row) => `<tr><td>${escapeHTML(row.metric)}</td>${row.values.map((v) => `<td>${escapeHTML(v)}</td>`).join("")}</tr>`),
+      `</tbody><caption>Based on ${targetSet.size} ${modeLabel}.</caption>`,
+    ].join("");
+  }
+
+  if (filterSelect && !filterSelect.dataset.boundarySensitivityBound) {
+    filterSelect.addEventListener("change", () => {
+      renderWithMode(filterSelect.value || "all");
+    });
+    filterSelect.dataset.boundarySensitivityBound = "1";
+  }
+
+  const mode = filterSelect ? (filterSelect.value || "all") : "all";
+  renderWithMode(mode);
+}
+
+function renderPerformanceLevelMetricsTable() {
+  const table = document.getElementById("performance-level-metrics-table");
+  const note = document.getElementById("performance-level-metrics-note");
+  if (!table) return;
+
+  const rows = [
+    { metric: "NRMSE", technology: "0.48", subsystem: "0.43", system: "0.34" },
+    { metric: "NMAE", technology: "0.21", subsystem: "0.27", system: "0.20" },
+    { metric: "RTA1%", technology: "59.1%", subsystem: "24.4%", system: "39.8%" },
+    { metric: "RTA5%", technology: "70.6%", subsystem: "53.0%", system: "64.2%" },
+    { metric: "RTA10%", technology: "77.5%", subsystem: "71.5%", system: "76.4%" },
+  ];
+
+  table.innerHTML = [
+    "<thead><tr><th>Metric</th><th>Technology-level</th><th>Subsystem-level</th><th>System-level</th></tr></thead>",
+    "<tbody>",
+    ...rows.map(
+      (r) => `<tr><td>${escapeHTML(r.metric)}</td><td>${escapeHTML(r.technology)}</td><td>${escapeHTML(r.subsystem)}</td><td>${escapeHTML(r.system)}</td></tr>`
+    ),
+    "</tbody>",
+  ].join("");
+
+  if (note) {
+    note.textContent = "Level definitions: Technology-level includes all Technology capacity and Technology operation target variables. Subsystem-level includes Electricity system capacity, Electricity system generation, Energy carriers imports, Energy carriers production, Flexibility and storage, and Commodity prices target variables. System-level includes Emissions and Total system costs target variables.";
+  }
+}
+
+function renderOutputTypeComparisonTable() {
+  const table = document.getElementById("output-type-comparison-table");
+  const note = document.getElementById("output-type-comparison-note");
+  if (!table) return;
+
+  const rows = [
+    { metric: "NRMSE", direct: "0.48", postProcessed: "0.43" },
+    { metric: "NMAE", direct: "0.21", postProcessed: "0.27" },
+    { metric: "RTA1%", direct: "59.0%", postProcessed: "25.1%" },
+    { metric: "RTA5%", direct: "70.7%", postProcessed: "53.4%" },
+    { metric: "RTA10%", direct: "77.7%", postProcessed: "71.5%" },
+  ];
+
+  table.innerHTML = [
+    "<thead><tr><th>Metric</th><th>Direct output</th><th>Post-processed output</th></tr></thead>",
+    "<tbody>",
+    ...rows.map(
+      (r) => `<tr><td>${escapeHTML(r.metric)}</td><td>${escapeHTML(r.direct)}</td><td>${escapeHTML(r.postProcessed)}</td></tr>`
+    ),
+    "</tbody>",
+  ].join("");
+
+  if (note) {
+    note.textContent = "Post-processed targets are the user-defined subset. All remaining targets are treated as direct output.";
+  }
 }
 
 function getDatasheetFilteredRows() {
@@ -1673,6 +1963,9 @@ function renderRegressionSection(regRows, violationsPayload, trainingPayload) {
     ].join("");
   }
 
+  renderFoldSensitivityTable(regRows);
+  renderBoundarySensitivityTable(dashboardSourceRows.classifier);
+
   const violationTable = document.getElementById("regression-violations-table");
   if (violationTable) {
     const methodsFromPayload = Array.isArray(violationsPayload?.methods) ? violationsPayload.methods : [];
@@ -1806,6 +2099,280 @@ function buildHeatmapTable(rows, metricCol) {
   const z = groups.map((g) => cols.map((c) => metricValue(groupFilter(g, c))));
   const text = groups.map((g) => cols.map((c) => annotation(groupFilter(g, c))));
   return { groups, cols, z, text };
+}
+
+function renderValueDistributionAccuracyFigure(payload) {
+  const chartId = "value-distribution-accuracy-chart";
+  const noteEl = document.getElementById("value-distribution-accuracy-note");
+  const chartEl = document.getElementById(chartId);
+  if (!chartEl) return;
+
+  const categories = Array.isArray(payload?.categories) ? payload.categories : [];
+  if (!categories.length) {
+    if (noteEl) {
+      noteEl.textContent = "Value-distribution summary data is not available.";
+    }
+    Plotly.newPlot(
+      chartId,
+      [],
+      baseLayout({
+        height: 430,
+        annotations: [
+          {
+            x: 0.5,
+            y: 0.5,
+            xref: "paper",
+            yref: "paper",
+            text: "No value-distribution metrics available",
+            showarrow: false,
+            font: { size: 16, color: "#667085" },
+          },
+        ],
+      }),
+      { responsive: true, displayModeBar: false }
+    );
+    return;
+  }
+
+  const order = payload?.order || ["Normal", "Skewed", "Uniform", "Multi regime"];
+  const byName = new Map(categories.map((c) => [String(c.name || ""), c]));
+  const ordered = order.map((name) => byName.get(name)).filter(Boolean);
+
+  const x = ordered.map((c) => c.name);
+  const nrmse = ordered.map((c) => toNum(c.nrmse));
+  const nmae = ordered.map((c) => toNum(c.nmae));
+  const rta1 = ordered.map((c) => toNum(c.rta1_pct));
+  const rta5 = ordered.map((c) => toNum(c.rta5_pct));
+  const rta10 = ordered.map((c) => toNum(c.rta10_pct));
+  const counts = ordered.map((c) => Number(c.n || 0));
+
+  const leftMax = Math.max(...nrmse.filter(Number.isFinite), ...nmae.filter(Number.isFinite), 0.05);
+  const rightMax = Math.max(...rta1.filter(Number.isFinite), ...rta5.filter(Number.isFinite), ...rta10.filter(Number.isFinite), 100);
+
+  const traces = [
+    {
+      type: "bar",
+      name: "NRMSE",
+      x,
+      y: nrmse,
+      marker: { color: "#4c72b0" },
+      yaxis: "y",
+      offsetgroup: "nrmse",
+      hovertemplate: "%{x}<br>NRMSE: %{y:.3f}<extra></extra>",
+    },
+    {
+      type: "bar",
+      name: "NMAE",
+      x,
+      y: nmae,
+      marker: { color: "#dd8452" },
+      yaxis: "y",
+      offsetgroup: "nmae",
+      hovertemplate: "%{x}<br>NMAE: %{y:.3f}<extra></extra>",
+    },
+    {
+      type: "bar",
+      name: "RTA1%",
+      x,
+      y: rta1,
+      marker: { color: "#7bc87c" },
+      yaxis: "y2",
+      offsetgroup: "rta1",
+      hovertemplate: "%{x}<br>RTA1%%: %{y:.2f}<extra></extra>",
+    },
+    {
+      type: "bar",
+      name: "RTA5%",
+      x,
+      y: rta5,
+      marker: { color: "#2f8f57" },
+      yaxis: "y2",
+      offsetgroup: "rta5",
+      hovertemplate: "%{x}<br>RTA5%%: %{y:.2f}<extra></extra>",
+    },
+    {
+      type: "bar",
+      name: "RTA10%",
+      x,
+      y: rta10,
+      marker: { color: "#1b5e20" },
+      yaxis: "y2",
+      offsetgroup: "rta10",
+      hovertemplate: "%{x}<br>RTA10%%: %{y:.2f}<extra></extra>",
+    },
+  ];
+
+  const annotations = x.map((name, idx) => ({
+    x: name,
+    y: rightMax * 1.03,
+    xref: "x",
+    yref: "y2",
+    text: `n=${counts[idx]}`,
+    showarrow: false,
+    font: { size: 12, color: "#303030" },
+  }));
+
+  Plotly.newPlot(
+    chartId,
+    traces,
+    baseLayout({
+      barmode: "group",
+      height: 470,
+      margin: { t: 30, r: 64, l: 68, b: 72 },
+      xaxis: { title: "Data distribution type", tickangle: -15, showgrid: false },
+      yaxis: { title: "NRMSE / NMAE", range: [0, leftMax * 1.25], zeroline: false, gridcolor: "#ececec" },
+      yaxis2: {
+        title: "RTA [%]",
+        overlaying: "y",
+        side: "right",
+        range: [0, rightMax * 1.12],
+        zeroline: false,
+        showgrid: false,
+      },
+      legend: { orientation: "h", y: 1.16, x: 0 },
+      annotations,
+    }),
+    { responsive: true, displayModeBar: false }
+  );
+
+  if (noteEl) {
+    const included = ordered.map((c) => `${c.name} (n=${c.n})`).join(", ");
+    const ruleText = payload?.category_rules
+      ? ` Category mapping: ${payload.category_rules}.`
+      : "";
+    noteEl.textContent = `Included target variables by distribution: ${included}.${ruleText}`;
+  }
+}
+
+function initClassifierCorrelationMatrixSection(clsRows) {
+  const tableEl = document.getElementById("classifier-correlation-matrix-table");
+  const noteEl = document.getElementById("classifier-correlation-matrix-note");
+  const filterEl = document.getElementById("corr-data-type-filter");
+  if (!tableEl || !noteEl || !filterEl) return;
+
+  // Table 16 targets the classifier-regressor model (threshold 20 baseline).
+  const baseRows = dedupeRowsByTarget(
+    (clsRows || []).filter((r) => {
+      const method = String(r.surrogate_method || "").toLowerCase();
+      return method === "xgb_hybrid_tuned" || method === "xgb_hybrid20_tuned";
+    })
+  );
+
+  const columns = [
+    { key: "nrmse", label: "nrmse" },
+    { key: "nmae", label: "nmae" },
+    { key: "RTA1pct", label: "RTA1pct" },
+    { key: "RTA5pct", label: "RTA5pct" },
+    { key: "RTA10pct", label: "RTA10pct" },
+    { key: "training_time_s", label: "Training time" },
+    { key: "running_time_s", label: "Running time" },
+    { key: "std_target", label: "Standard deviation" },
+    { key: "REG_cat", label: "# continuous values" },
+    { key: "CLAS_cat", label: "# discrete values" },
+    { key: "classifier_accuracy", label: "Classifier accuracy" },
+  ];
+
+  function getMetricValue(row, key) {
+    // Keep Table 16 consistent with the paper table: use classifier_accuracy only.
+    if (key === "classifier_accuracy") {
+      return toNum(row.classifier_accuracy);
+    }
+    return toNum(row[key]);
+  }
+
+  function pearsonForRows(rows, keyA, keyB) {
+    const pairs = [];
+    for (const row of rows) {
+      const a = getMetricValue(row, keyA);
+      const b = getMetricValue(row, keyB);
+      if (a === null || b === null) continue;
+      pairs.push([a, b]);
+    }
+    if (pairs.length < 2) return null;
+
+    const xs = pairs.map((p) => p[0]);
+    const ys = pairs.map((p) => p[1]);
+    const mx = mean(xs);
+    const my = mean(ys);
+    if (mx === null || my === null) return null;
+
+    let cov = 0;
+    let varX = 0;
+    let varY = 0;
+    for (let i = 0; i < pairs.length; i += 1) {
+      const dx = xs[i] - mx;
+      const dy = ys[i] - my;
+      cov += dx * dy;
+      varX += dx * dx;
+      varY += dy * dy;
+    }
+    if (varX <= 0 || varY <= 0) return null;
+    return cov / Math.sqrt(varX * varY);
+  }
+
+  function fmtCorr(v) {
+    if (!Number.isFinite(v)) return "-";
+    if (Math.abs(v - 1) < 1e-12) return "1";
+    return v.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  function applyDataTypeFilter(rows, mode) {
+    if (mode === "all") return rows;
+    return rows.filter((row) => {
+      let type = "Unknown";
+      const nCategories = toNum(row.n_categories);
+      if (nCategories !== null) {
+        const n = Math.trunc(nCategories);
+        if (n === 0) type = "Continuous";
+        else if (n <= 20) type = "Semi-continuous";
+        else type = "Discrete";
+      } else {
+        // Fallback if n_categories is unavailable.
+        type = classifyDataType(row);
+      }
+      if (mode === "continuous") return type === "Continuous";
+      if (mode === "semi") return type === "Semi-continuous";
+      if (mode === "discrete") return type === "Discrete";
+      return true;
+    });
+  }
+
+  function render() {
+    const mode = filterEl.value || "all";
+    const filteredRows = applyDataTypeFilter(baseRows, mode);
+    const hideClassifierAccuracy = mode === "continuous";
+
+    const headerCells = [`<th></th>`, ...columns.map((c) => `<th>${escapeHTML(c.label)}</th>`)].join("");
+    const bodyRows = columns.map((rowCol, rowIdx) => {
+      const cells = columns
+        .map((col, colIdx) => {
+          if (hideClassifierAccuracy && (rowCol.key === "classifier_accuracy" || col.key === "classifier_accuracy")) {
+            return "<td></td>";
+          }
+          if (colIdx > rowIdx) return "<td></td>";
+          if (colIdx === rowIdx) return "<td>1</td>";
+          const corr = pearsonForRows(filteredRows, rowCol.key, col.key);
+          return `<td>${fmtCorr(corr)}</td>`;
+        })
+        .join("");
+      return `<tr><th>${escapeHTML(rowCol.label)}</th>${cells}</tr>`;
+    });
+
+    tableEl.innerHTML = [
+      `<thead><tr>${headerCells}</tr></thead>`,
+      "<tbody>",
+      ...bodyRows,
+      "</tbody>",
+    ].join("");
+
+    const modeLabel = mode === "all" ? "all target variables" : mode === "continuous" ? "continuous only" : mode === "semi" ? "semi-continuous only" : "discrete only";
+    noteEl.textContent = hideClassifierAccuracy
+      ? `Rows included: ${filteredRows.length} (${modeLabel}) from classifier-regressor baseline (XGB_HYBRID_tuned). Classifier accuracy is shown as not applicable for this filter.`
+      : `Rows included: ${filteredRows.length} (${modeLabel}) from classifier-regressor baseline (XGB_HYBRID_tuned).`;
+  }
+
+  filterEl.addEventListener("change", render);
+  render();
 }
 
 function renderClassifierSection(clsRows) {
@@ -2184,7 +2751,7 @@ function renderJointSection(classifierRows, jointRows) {
 
 async function main() {
   try {
-    const [regRows, clsRows, jointRows, regSheetRows, clsSheetRows, jointSheetRows, trainingPayload, violationsPayload] = await Promise.all([
+    const [regRows, clsRows, jointRows, regSheetRows, clsSheetRows, jointSheetRows, trainingPayload, violationsPayload, valueDistributionPayload] = await Promise.all([
       loadCSV("./data/regression_surrogate_run_log.csv"),
       loadCSV("./data/classifier_2fold_performance.csv"),
       loadCSV("./data/joint_learning_informed_classifier_run_log.csv"),
@@ -2193,6 +2760,7 @@ async function main() {
       loadCSV("./data/joint_datasheet.csv"),
       loadJSON("./data/training_value_distributions.json").catch(() => ({ targets: [], target_count_with_variation: 0 })),
       loadJSON("./data/regression_constraint_violations.json").catch(() => ({ methods: [], common_pair_count: 0 })),
+      loadJSON("./data/value_distribution_metrics.json").catch(() => ({ categories: [] })),
     ]);
 
     dashboardSourceRows = {
@@ -2223,7 +2791,11 @@ async function main() {
     renderOverviewSummary();
     renderRegressionSection(regRows, violationsPayload, trainingPayload);
     renderClassifierSection(clsRows);
+    initClassifierCorrelationMatrixSection(clsRows);
     renderJointSection(clsRows, jointRows);
+    renderPerformanceLevelMetricsTable();
+    renderOutputTypeComparisonTable();
+    renderValueDistributionAccuracyFigure(valueDistributionPayload);
     initTabs();
     initInsightsSubchapters();
     initDatasheetsTab(regSheetRows, clsSheetRows, jointSheetRows);
