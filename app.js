@@ -71,8 +71,21 @@ let recurringOnlyMode = "all";
 const trainingDataState = {
   targets: [],
   selected: new Set(),
-  maxPanels: 12,
+  maxPanels: 9,
 };
+
+const TRAINING_VARIABLE_TYPE_REFERENCE_ROWS = [
+  { type: "Technology capacity", count: 218 },
+  { type: "Technology operation", count: 200 },
+  { type: "Commodity prices", count: 81 },
+  { type: "Electricity system capacity", count: 22 },
+  { type: "Electricity system generation", count: 22 },
+  { type: "Flexibility and storage", count: 7 },
+  { type: "Energy carriers imports", count: 5 },
+  { type: "Energy carriers production", count: 4 },
+  { type: "Emissions", count: 2 },
+  { type: "Total system cost (objective function)", count: 1 },
+];
 
 const datasheetState = {
   datasets: {
@@ -120,7 +133,7 @@ function parseCSV(text) {
 }
 
 async function loadCSV(path) {
-  const response = await fetch(path);
+  const response = await fetch(path, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Could not load ${path}`);
   }
@@ -129,7 +142,7 @@ async function loadCSV(path) {
 }
 
 async function loadJSON(path) {
-  const response = await fetch(path);
+  const response = await fetch(path, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Could not load ${path}`);
   }
@@ -239,20 +252,25 @@ function getPairIntersection(setA, setB) {
   return new Set([...setA].filter((v) => setB.has(v)));
 }
 
-function getRecurringTargetSet(classifierRows) {
-  const recurring = new Set();
+function getStrictSection2TargetSet(classifierRows) {
+  const eligible = new Set();
   for (const row of classifierRows || []) {
     const target = normalizeTargetName(row.target_variable);
     if (!target) continue;
 
-    const nCategories = toNum(row.n_categories);
-    const categoriesRaw = String(row.categories ?? "").trim();
-    const hasExplicitCategories = categoriesRaw && categoriesRaw !== "[]";
-    if ((nCategories !== null && nCategories > 0) || hasExplicitCategories) {
-      recurring.add(target);
+    // Stricter paper-consistent rule:
+    // - Discrete: REG_cat == 0
+    // - Semi-continuous: REG_cat > 0 and CLAS_cat > 0
+    const regCat = toNum(row.REG_cat);
+    const clasCat = toNum(row.CLAS_cat);
+    const isDiscrete = regCat !== null && regCat === 0;
+    const isSemiContinuous = regCat !== null && clasCat !== null && regCat > 0 && clasCat > 0;
+
+    if (isDiscrete || isSemiContinuous) {
+      eligible.add(target);
     }
   }
-  return recurring;
+  return eligible;
 }
 
 function buildMethodSummaries(regRows, clsRows, jointRows, mode) {
@@ -724,11 +742,15 @@ function initTrainingDataTab(trainingPayload) {
   const selectAllBtn = document.getElementById("training-select-all");
   const clearBtn = document.getElementById("training-clear");
   const noteEl = document.getElementById("training-selection-note");
+  const dataTypeTableEl = document.getElementById("training-data-type-table");
+  const dataTypeAnalysisTableEl = document.getElementById("training-data-type-analysis-table");
   const chartId = "training-distribution-plot";
 
-  if (!countEl || !typeFilterEl || !searchEl || !selectEl || !selectAllBtn || !clearBtn || !noteEl) return;
+  if (!countEl || !typeFilterEl || !searchEl || !selectEl || !selectAllBtn || !clearBtn || !noteEl || !dataTypeTableEl || !dataTypeAnalysisTableEl) return;
 
-  countEl.textContent = String(trainingPayload?.target_count_with_variation ?? targets.length);
+  countEl.textContent = String(
+    TRAINING_VARIABLE_TYPE_REFERENCE_ROWS.reduce((sum, row) => sum + row.count, 0)
+  );
 
   let filteredTargets = targets;
   const availableTypes = [...new Set(targets.map((t) => String(t.variable_type || "Other")))];
@@ -773,6 +795,24 @@ function initTrainingDataTab(trainingPayload) {
     return formatTrainingTargetLabel(t);
   }
 
+  function formatRecurringValueLabel(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return String(value);
+    if (num === 0) return "0";
+
+    const abs = Math.abs(num);
+    if (abs < 0.1) return num.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+    if (abs < 1) return num.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+    return num.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  function formatRecurringValues(target) {
+    const values = Array.isArray(target.recurring_values) ? target.recurring_values : [];
+    if (!values.length) return "[]";
+    const labels = [...new Set(values.map((v) => formatRecurringValueLabel(v)))];
+    return `[${labels.map((label) => `'${label}'`).join(", ")}]`;
+  }
+
   function renderOptions() {
     const chosenTypes = getSelectedOptions(typeFilterEl);
     selectedTypes = new Set(chosenTypes);
@@ -798,6 +838,52 @@ function initTrainingDataTab(trainingPayload) {
       .join("");
   }
 
+  function renderDataTypeSummaryTable() {
+    const total = TRAINING_VARIABLE_TYPE_REFERENCE_ROWS.reduce((sum, row) => sum + row.count, 0);
+    dataTypeTableEl.innerHTML = [
+      "<thead><tr><th>Variable type</th><th>Amount of TVs</th></tr></thead>",
+      "<tbody>",
+      ...TRAINING_VARIABLE_TYPE_REFERENCE_ROWS.map(
+        (row) => `<tr><td>${escapeHTML(row.type)}</td><td>${row.count}</td></tr>`
+      ),
+      `<tr><td><strong>Total</strong></td><td><strong>${total}</strong></td></tr>`,
+      "</tbody>",
+    ].join("");
+  }
+
+  function renderDataTypeAnalysisTable() {
+    const counts = {
+      Continuous: 0,
+      "Semi-continuous": 0,
+      Discrete: 0,
+    };
+
+    filteredTargets.forEach((target) => {
+      const key = String(target.data_type || "");
+      if (Object.prototype.hasOwnProperty.call(counts, key)) {
+        counts[key] += 1;
+      }
+    });
+
+    const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
+    const pct = (value) => (total > 0 ? `${((100 * value) / total).toFixed(1)}%` : "0.0%");
+
+    dataTypeAnalysisTableEl.innerHTML = [
+      "<thead><tr><th>Training data type</th><th>Target variables</th><th>Share</th><th>Definition</th></tr></thead>",
+      "<tbody>",
+      `<tr><td>Continuous</td><td>${counts.Continuous}</td><td>${pct(counts.Continuous)}</td><td>No recurring values appear 20 times or more in the training set.</td></tr>`,
+      `<tr><td>Semi-continuous</td><td>${counts["Semi-continuous"]}</td><td>${pct(counts["Semi-continuous"])}</td><td>Mix of recurring values and non-recurring values in the training set.</td></tr>`,
+      `<tr><td>Discrete</td><td>${counts.Discrete}</td><td>${pct(counts.Discrete)}</td><td>Recurring values only, with each recurring value appearing 20 times or more.</td></tr>`,
+      `<tr><td><strong>Total</strong></td><td><strong>${total}</strong></td><td><strong>100.0%</strong></td><td><strong>Filtered varying target variables currently in scope.</strong></td></tr>`,
+      "</tbody>",
+    ].join("");
+  }
+
+  function autoSelectFilteredTargets() {
+    trainingDataState.selected = new Set(filteredTargets.map((t) => String(t.outcome)));
+    renderOptions();
+  }
+
   function syncSelectionFromSelect() {
     trainingDataState.selected = new Set(getSelectedOptions(selectEl));
   }
@@ -811,7 +897,7 @@ function initTrainingDataTab(trainingPayload) {
       .filter(Boolean);
 
     if (!selectedTargets.length) {
-      noteEl.textContent = "Select at least one target variable to show value distribution.";
+      noteEl.textContent = "Select at least one target variable type or target variable to show value distributions.";
       Plotly.newPlot(
         chartId,
         [],
@@ -839,15 +925,15 @@ function initTrainingDataTab(trainingPayload) {
     const activeTypes = [...selectedTypes];
     const typeText = activeTypes.length ? `Variable types: ${activeTypes.join(", ")}. ` : "Variable types: none selected. ";
     noteEl.textContent = maxHit
-      ? `${typeText}Showing ${renderedTargets.length} of ${selectedTargets.length} selected targets to keep the page responsive.`
-      : `${typeText}Showing ${renderedTargets.length} selected target variable distribution(s).`;
+      ? `${typeText}Showing ${renderedTargets.length} of ${selectedTargets.length} matching targets to keep the page responsive.`
+      : `${typeText}Showing ${renderedTargets.length} matching target variable distribution(s).`;
 
-    const cols = 2;
+    const cols = Math.min(3, Math.max(1, renderedTargets.length));
     const rows = Math.max(1, Math.ceil(renderedTargets.length / cols));
     const layout = baseLayout({
       showlegend: false,
-      height: Math.max(420, rows * 320),
-      margin: { t: 52, r: 24, l: 54, b: 54 },
+      height: Math.max(540, rows * 245),
+      margin: { t: 34, r: 16, l: 42, b: 38 },
       grid: { rows, columns: cols, pattern: "independent" },
       annotations: [],
     });
@@ -866,8 +952,8 @@ function initTrainingDataTab(trainingPayload) {
         type: "bar",
         x: xs.slice(0, n),
         y: ys.slice(0, n),
-        marker: { color: "#82AFDA", line: { color: "#0a3a52", width: 0.5 } },
-        opacity: 0.82,
+        marker: { color: "#6f95bd", line: { color: "#4d6e92", width: 0.45 } },
+        opacity: 0.9,
         xaxis: xref,
         yaxis: yref,
         hovertemplate: "Value=%{x:.4g}<br>Frequency=%{y}<extra></extra>",
@@ -875,30 +961,58 @@ function initTrainingDataTab(trainingPayload) {
 
       const unit = String(target.unit || "").trim() || "N/A";
       const title = formatTrainingTargetLabel(target);
+      const recurringText = formatRecurringValues(target);
 
       layout[`xaxis${axisNum === 1 ? "" : axisNum}`] = {
         title: `Value (${unit})`,
-        showgrid: true,
-        gridcolor: "#e9edf2",
+        titlefont: { size: 11 },
+        tickfont: { size: 10 },
+        showgrid: false,
         zeroline: false,
+        showline: true,
+        linecolor: "#3f3f3f",
+        linewidth: 1,
+        mirror: false,
       };
       layout[`yaxis${axisNum === 1 ? "" : axisNum}`] = {
         title: "Frequency",
-        showgrid: true,
-        gridcolor: "#eef2f6",
+        titlefont: { size: 11 },
+        tickfont: { size: 10 },
+        showgrid: false,
         zeroline: false,
+        showline: true,
+        linecolor: "#3f3f3f",
+        linewidth: 1,
+        mirror: false,
       };
 
       const xDomainRef = axisNum === 1 ? "x domain" : `x${axisNum} domain`;
       const yDomainRef = axisNum === 1 ? "y domain" : `y${axisNum} domain`;
       layout.annotations.push({
-        text: `<b>${escapeHTML(title)}</b>`,
+        text: `<b>${escapeHTML(title)}</b><br>(${escapeHTML(unit)})`,
         xref: xDomainRef,
         yref: yDomainRef,
         x: 0.5,
-        y: 1.02,
+        y: 1.06,
         showarrow: false,
-        font: { size: 12, color: "#1f2a37" },
+        font: { size: 11, color: "#1f2a37" },
+      });
+
+      layout.annotations.push({
+        text: `Recurring: ${escapeHTML(recurringText)}`,
+        xref: xDomainRef,
+        yref: yDomainRef,
+        x: 0.995,
+        y: 1.01,
+        showarrow: false,
+        xanchor: "right",
+        yanchor: "top",
+        align: "right",
+        bordercolor: "#868686",
+        borderwidth: 0.8,
+        borderpad: 2,
+        bgcolor: "rgba(255,255,255,0.9)",
+        font: { size: 9, color: "#333333" },
       });
     });
 
@@ -907,10 +1021,15 @@ function initTrainingDataTab(trainingPayload) {
 
   searchEl.addEventListener("input", () => {
     renderOptions();
+    autoSelectFilteredTargets();
+    renderDataTypeAnalysisTable();
+    renderDistributions();
   });
 
   typeFilterEl.addEventListener("change", () => {
     renderOptions();
+    autoSelectFilteredTargets();
+    renderDataTypeAnalysisTable();
     renderDistributions();
   });
 
@@ -932,9 +1051,11 @@ function initTrainingDataTab(trainingPayload) {
   });
 
   if (targets.length) {
-    trainingDataState.selected = new Set([String(targets[0].outcome)]);
+    trainingDataState.selected = new Set(filteredTargets.slice(0, trainingDataState.maxPanels).map((t) => String(t.outcome)));
   }
   renderOptions();
+  renderDataTypeSummaryTable();
+  renderDataTypeAnalysisTable();
   renderDistributions();
 }
 
@@ -973,12 +1094,246 @@ function newestByTarget(rows) {
   return [...map.values()].map((x) => x.row);
 }
 
+function averageRowsByTarget(rows) {
+  const metricKeys = ["nrmse", "nmae", "RTA1pct", "RTA5pct", "RTA10pct", "training_time_s", "running_time_s"];
+  const byTarget = new Map();
+
+  rows.forEach((row) => {
+    const targetKey = normalizeTargetName(row.target_variable);
+    if (!targetKey) return;
+
+    if (!byTarget.has(targetKey)) {
+      const seed = { target_variable: row.target_variable };
+      metricKeys.forEach((key) => {
+        seed[key] = { sum: 0, count: 0 };
+      });
+      byTarget.set(targetKey, seed);
+    }
+
+    const agg = byTarget.get(targetKey);
+    metricKeys.forEach((key) => {
+      const value = toNum(row[key]);
+      if (value === null) return;
+      agg[key].sum += value;
+      agg[key].count += 1;
+    });
+  });
+
+  return [...byTarget.values()].map((agg) => {
+    const out = { target_variable: agg.target_variable };
+    metricKeys.forEach((key) => {
+      out[key] = agg[key].count ? agg[key].sum / agg[key].count : null;
+    });
+    return out;
+  });
+}
+
+function percentileLinear(sortedValues, p) {
+  if (!sortedValues.length) return null;
+  if (sortedValues.length === 1) return sortedValues[0];
+  const idx = (sortedValues.length - 1) * p;
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sortedValues[lo];
+  const w = idx - lo;
+  return sortedValues[lo] * (1 - w) + sortedValues[hi] * w;
+}
+
+function computeMatplotlibBoxStats(values) {
+  const nums = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+  if (!nums.length) {
+    return {
+      q1: null,
+      median: null,
+      q3: null,
+      lowerFence: null,
+      upperFence: null,
+    };
+  }
+
+  const q1 = percentileLinear(nums, 0.25);
+  const medianValue = percentileLinear(nums, 0.5);
+  const q3 = percentileLinear(nums, 0.75);
+  const iqr = q3 - q1;
+  const lowBound = q1 - 1.5 * iqr;
+  const highBound = q3 + 1.5 * iqr;
+
+  const inlierLow = nums.find((v) => v >= lowBound);
+  const inlierHigh = [...nums].reverse().find((v) => v <= highBound);
+
+  return {
+    q1,
+    median: medianValue,
+    q3,
+    lowerFence: inlierLow !== undefined ? inlierLow : nums[0],
+    upperFence: inlierHigh !== undefined ? inlierHigh : nums[nums.length - 1],
+  };
+}
+
+function getSection2AlignedRows(regRows, clsRows, jointRows) {
+  const xgbRaw = regRows.filter((r) => String(r.surrogate_method || "").toLowerCase() === "xgb_single");
+  const hybridRaw = clsRows.filter((r) => String(r.surrogate_method || "").toLowerCase() === "xgb_hybrid_tuned");
+
+  const recurringTargetSet = getStrictSection2TargetSet(dedupeRowsByTarget(hybridRaw));
+  const setXGB = new Set(xgbRaw.map((r) => normalizeTargetName(r.target_variable)).filter(Boolean));
+  const setClf = new Set(hybridRaw.map((r) => normalizeTargetName(r.target_variable)).filter(Boolean));
+  const commonTargets = getPairIntersection(setXGB, setClf);
+
+  const xgbCommon = xgbRaw.filter((r) => commonTargets.has(normalizeTargetName(r.target_variable)));
+  const hybridCommon = hybridRaw.filter((r) => commonTargets.has(normalizeTargetName(r.target_variable)));
+
+  function applyRecurringOnlySection2(rows) {
+    if (recurringOnlyMode !== "recurring") return rows;
+    return rows.filter((r) => recurringTargetSet.has(normalizeTargetName(r.target_variable)));
+  }
+
+  const xgbFiltered = applyRecurringOnlySection2(xgbCommon);
+  const hybridFiltered = applyRecurringOnlySection2(hybridCommon);
+
+  return {
+    xgbRows: averageRowsByTarget(xgbFiltered),
+    xgbClassifierRows: averageRowsByTarget(hybridFiltered),
+    commonTargets,
+    recurringTargetSet,
+  };
+}
+
+function renderSection2MetricDistributions(regRows, clsRows, jointRows) {
+  const chartEl = document.getElementById("xgb-clf-metrics-boxplots");
+  if (!chartEl) return;
+
+  const noteEl = document.getElementById("xgb-clf-metrics-note");
+  const aligned = getSection2AlignedRows(regRows, clsRows, jointRows);
+
+  const methods = [
+    { label: "Regressor", rows: aligned.xgbRows, color: "#FF9999" },
+    { label: "Classifier-regressor", rows: aligned.xgbClassifierRows, color: "#99CCFF" },
+  ];
+
+  const specs = [
+    { key: "nrmse", title: "NRMSE Distribution", yTitle: "NRMSE", scale: 1, decimals: 3 },
+    { key: "nmae", title: "NMAE Distribution", yTitle: "NMAE", scale: 1, decimals: 3 },
+    { key: "RTA1pct", title: "1% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { key: "RTA5pct", title: "5% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { key: "RTA10pct", title: "10% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { key: "training_time_s", title: "Training Time Distribution", yTitle: "Training Time (s)", scale: 1, decimals: 2 },
+    { key: "running_time_s", title: "Running Time Distribution", yTitle: "Running Time (s)", scale: 1, decimals: 6 },
+  ];
+
+  const layout = baseLayout({
+    showlegend: false,
+    margin: { t: 56, r: 24, l: 40, b: 34 },
+    grid: { rows: 2, columns: 4, pattern: "independent" },
+    height: 820,
+    annotations: [],
+  });
+
+  const xDomains = [
+    [0.0, 0.215],
+    [0.265, 0.48],
+    [0.53, 0.745],
+    [0.795, 0.995],
+  ];
+  const yDomainTop = [0.56, 1.0];
+  const yDomainBottom = [0.0, 0.44];
+
+  const traces = [];
+  specs.forEach((spec, idx) => {
+    const axisNum = idx + 1;
+    const xref = axisNum === 1 ? "x" : `x${axisNum}`;
+    const yref = axisNum === 1 ? "y" : `y${axisNum}`;
+
+    methods.forEach((method) => {
+      const values = (method.rows || [])
+        .map((r) => toNum(r[spec.key]))
+        .filter((v) => v !== null)
+        .map((v) => v * spec.scale);
+
+      const stats = computeMatplotlibBoxStats(values);
+      if (stats.q1 === null) return;
+
+      traces.push({
+        type: "box",
+        name: method.label,
+        x: [method.label],
+        q1: [stats.q1],
+        median: [stats.median],
+        q3: [stats.q3],
+        lowerfence: [stats.lowerFence],
+        upperfence: [stats.upperFence],
+        xaxis: xref,
+        yaxis: yref,
+        marker: { color: method.color },
+        line: { color: "#666666", width: 1 },
+        fillcolor: method.color,
+        boxmean: false,
+        boxpoints: false,
+        whiskerwidth: 0.8,
+        hovertemplate: `${method.label}<br>%{y:.${spec.decimals}f}<extra></extra>`,
+      });
+    });
+
+    layout[`xaxis${axisNum === 1 ? "" : axisNum}`] = {
+      tickangle: 0,
+      showline: true,
+      linecolor: "#111111",
+      linewidth: 1.5,
+      mirror: true,
+      categoryorder: "array",
+      categoryarray: ["Regressor", "Classifier-regressor"],
+      tickfont: { size: 11 },
+      domain: xDomains[idx % 4],
+    };
+
+    layout[`yaxis${axisNum === 1 ? "" : axisNum}`] = {
+      title: spec.yTitle,
+      showgrid: false,
+      zeroline: false,
+      showline: true,
+      linecolor: "#111111",
+      linewidth: 1.5,
+      mirror: true,
+      range: spec.range,
+      tickfont: { size: 11 },
+      titlefont: { size: 13 },
+      title_standoff: 8,
+      domain: idx < 4 ? yDomainTop : yDomainBottom,
+    };
+
+    const xDomainRef = axisNum === 1 ? "x domain" : `x${axisNum} domain`;
+    const yDomainRef = axisNum === 1 ? "y domain" : `y${axisNum} domain`;
+    layout.annotations.push({
+      text: `<b>${spec.title}</b>`,
+      xref: xDomainRef,
+      yref: yDomainRef,
+      x: 0.5,
+      y: 1.02,
+      showarrow: false,
+      font: { size: 15, color: "#1f2a37" },
+      xanchor: "center",
+      yanchor: "bottom",
+    });
+  });
+
+  Plotly.newPlot("xgb-clf-metrics-boxplots", traces, layout, {
+    responsive: true,
+    displayModeBar: false,
+  });
+
+  if (noteEl) {
+    const modeSuffix = recurringOnlyMode === "recurring"
+      ? ` (filtered to semi-continuous/discrete targets: ${aligned.recurringTargetSet.size} eligible)`
+      : "";
+    noteEl.textContent = `Included shared targets: ${aligned.xgbRows.length}${modeSuffix}.`;
+  }
+}
+
 function renderOverviewSummary() {
-  const { commonTargetCount, xgbPairCommonTargetCount } = buildMethodSummaries(
+  const { xgbPairCommonTargetCount } = buildMethodSummaries(
     dashboardSourceRows.regression,
     dashboardSourceRows.classifier,
     dashboardSourceRows.joint,
-    commonTargetMode
+    "common"
   );
 
   const methodMapRaw = getMethodRowsMap(
@@ -986,13 +1341,13 @@ function renderOverviewSummary() {
     dashboardSourceRows.classifier,
     dashboardSourceRows.joint
   );
-  const recurringTargetSet = getRecurringTargetSet(dashboardSourceRows.classifier);
   const methodMap = Object.fromEntries(
     methodMapRaw.map((entry) => {
       const deduped = dedupeRowsByTarget(entry.rows);
       return [entry.label, deduped];
     })
   );
+  const recurringTargetSet = getStrictSection2TargetSet(methodMap["XGB+classifier"] || []);
 
   const setXGB = new Set((methodMap.XGB || []).map((r) => normalizeTargetName(r.target_variable)));
   const setMLP = new Set((methodMap.MLP || []).map((r) => normalizeTargetName(r.target_variable)));
@@ -1006,7 +1361,7 @@ function renderOverviewSummary() {
 
   function alignedRows(label, targetSet) {
     const rows = methodMap[label] || [];
-    if (commonTargetMode !== "common") return rows;
+    // Always align by shared targets for fair per-section comparison.
     return rows.filter((r) => targetSet.has(normalizeTargetName(r.target_variable)));
   }
 
@@ -1040,18 +1395,19 @@ function renderOverviewSummary() {
   const note = document.getElementById("common-target-note");
   if (note) {
     const recurringSuffix = recurringOnlyMode === "recurring"
-      ? ` Recurring-only filter is applied to section 2 only (${recurringTargetSet.size} recurring targets detected from classifier results).`
+      ? ` Stricter filter is applied to section 2 only (${recurringTargetSet.size} semi-continuous/discrete targets by REG_cat/CLAS_cat).`
       : "";
-
-    if (commonTargetMode === "common") {
-      note.textContent = `Common-target mode enabled: GP/MLP/XGB share ${commonConventional.size} targets, XGB/XGB+classifier share ${xgbPairCommonTargetCount}, and XGB+classifier/informed_classifier share ${commonClfInf.size}.${recurringSuffix}`;
-    } else {
-      note.textContent = `All-target mode enabled: each method uses all available targets from its own results.${recurringSuffix}`;
-    }
+    note.textContent = `Shared-target mode enabled: GP/MLP/XGB share ${commonConventional.size} targets, XGB/XGB+classifier share ${xgbPairCommonTargetCount}, and XGB+classifier/informed_classifier share ${commonClfInf.size}.${recurringSuffix}`;
   }
+
+  renderSection2MetricDistributions(
+    dashboardSourceRows.regression,
+    dashboardSourceRows.classifier,
+    dashboardSourceRows.joint
+  );
 }
 
-function renderRegressionSection(regRows) {
+function renderRegressionSection(regRows, violationsPayload, trainingPayload) {
   const clean = regRows.filter((r) => ["XGB_single", "AE_MLP", "AE_GaussianProcess"].includes(r.surrogate_method));
   const methods = ["XGB_single", "AE_MLP", "AE_GaussianProcess"];
   const labels = {
@@ -1316,6 +1672,98 @@ function renderRegressionSection(regRows) {
       "</tbody>",
     ].join("");
   }
+
+  const violationTable = document.getElementById("regression-violations-table");
+  if (violationTable) {
+    const methodsFromPayload = Array.isArray(violationsPayload?.methods) ? violationsPayload.methods : [];
+
+    if (!methodsFromPayload.length) {
+      violationTable.innerHTML = "<tbody><tr><td>Constraint violation summary data not available.</td></tr></tbody>";
+    } else {
+      violationTable.innerHTML = [
+        "<thead><tr><th>Method</th><th>Tech-Period Pairs</th><th>Constraint Violations [%]</th></tr></thead>",
+        "<tbody>",
+        ...methodsFromPayload.map(
+          (r) => `<tr><td>${escapeHTML(r.method)}</td><td>${Number(r.pair_count || 0)}</td><td>${r.constraint_violations_pct === null || r.constraint_violations_pct === undefined ? "-" : fmt(Number(r.constraint_violations_pct), 2)}</td></tr>`
+        ),
+        "</tbody>",
+      ].join("");
+    }
+  }
+
+  const violationTechnologyTable = document.getElementById("regression-violation-technologies-table");
+  const violationTechnologyAverages = document.getElementById("regression-violation-technology-averages");
+  const violationTechnologyFilter = document.getElementById("regression-violation-technology-filter");
+  const violationTechnologySearch = document.getElementById("regression-violation-technology-search");
+  const violationTechnologyNote = document.getElementById("regression-violation-technology-note");
+  if (violationTechnologyTable && violationTechnologyAverages && violationTechnologyFilter && violationTechnologySearch && violationTechnologyNote) {
+    const technologyNameMap = new Map(
+      (Array.isArray(trainingPayload?.targets) ? trainingPayload.targets : [])
+        .map((target) => [String(target.technology_id || "").trim(), String(target.technology_name || "").trim()])
+        .filter(([technologyId, technologyName]) => technologyId && technologyName)
+    );
+    const comparableRows = Array.isArray(violationsPayload?.comparable_pair_rows)
+      ? violationsPayload.comparable_pair_rows
+      : [];
+    const comparableMethodRows = (Array.isArray(violationsPayload?.methods) ? violationsPayload.methods : []).filter((row) =>
+      ["XGB", "XGB+classifier", "informed_classifier"].includes(String(row.method || ""))
+    );
+
+    const formatViolationCell = (entry) => {
+      if (!entry || entry.constraint_violations_pct === null || entry.constraint_violations_pct === undefined) return "-";
+      if (!entry.violates_constraint) return "";
+      return `Violation (${fmt(Number(entry.constraint_violations_pct), 2)}%)`;
+    };
+
+    const matchesViolationFilter = (row, filterValue) => {
+      if (filterValue === "all") return true;
+      if (filterValue === "any") return Boolean(row.XGB?.violates_constraint || row["XGB+classifier"]?.violates_constraint || row.informed_classifier?.violates_constraint);
+      if (filterValue === "xgb") return Boolean(row.XGB?.violates_constraint);
+      if (filterValue === "xgbclf") return Boolean(row["XGB+classifier"]?.violates_constraint);
+      if (filterValue === "informed") return Boolean(row.informed_classifier?.violates_constraint);
+      if (filterValue === "clean") return !row.XGB?.violates_constraint && !row["XGB+classifier"]?.violates_constraint && !row.informed_classifier?.violates_constraint;
+      return true;
+    };
+
+    const renderViolationTechnologyTable = () => {
+      const filterValue = violationTechnologyFilter.value || "all";
+      const query = violationTechnologySearch.value.trim().toLowerCase();
+      const filteredRows = comparableRows.filter((row) => {
+        const technology = String(row.technology || "").toLowerCase();
+        const textMatch = !query || technology.includes(query);
+        return textMatch && matchesViolationFilter(row, filterValue);
+      });
+
+      violationTechnologyNote.textContent = `Showing ${filteredRows.length} of ${comparableRows.length} technologies.`;
+
+      violationTechnologyTable.innerHTML = [
+        "<thead><tr><th>Technology</th><th>XGB</th><th>XGB+classifier</th><th>informed_classifier</th></tr></thead>",
+        "<tbody>",
+        ...filteredRows.map((row) => {
+          const technologyId = String(row.technology || "");
+          const technologyLabel = technologyNameMap.get(technologyId) || technologyId;
+          return `<tr><td>${escapeHTML(technologyLabel)}</td><td>${formatViolationCell(row.XGB)}</td><td>${formatViolationCell(row["XGB+classifier"])}</td><td>${formatViolationCell(row.informed_classifier)}</td></tr>`;
+        }),
+        "</tbody>",
+      ].join("");
+    };
+
+    if (!comparableRows.length) {
+      violationTechnologyTable.innerHTML = "<tbody><tr><td>Per-technology constraint violation data not available.</td></tr></tbody>";
+      violationTechnologyAverages.innerHTML = "";
+      violationTechnologyNote.textContent = "";
+    } else {
+      violationTechnologyAverages.innerHTML = comparableMethodRows
+        .map(
+          (row) => `<div class="card"><h3>${escapeHTML(String(row.method || ""))}</h3><div class="metric">Avg violation: ${row.constraint_violations_pct === null || row.constraint_violations_pct === undefined ? "-" : `${fmt(Number(row.constraint_violations_pct), 2)}%`}</div></div>`
+        )
+        .join("");
+
+      violationTechnologyFilter.addEventListener("change", renderViolationTechnologyTable);
+      violationTechnologySearch.addEventListener("input", renderViolationTechnologyTable);
+      renderViolationTechnologyTable();
+    }
+  }
 }
 
 function buildHeatmapTable(rows, metricCol) {
@@ -1363,6 +1811,20 @@ function buildHeatmapTable(rows, metricCol) {
 function renderClassifierSection(clsRows) {
   const methodSelect = document.getElementById("classifier-method-filter");
   const metricSelect = document.getElementById("heatmap-metric-filter");
+  const rtaStackedNote = document.getElementById("classifier-rta-stacked-note");
+  const classifierAccuracyNote = document.getElementById("classifier-accuracy-bar-note");
+  const rtaOrder = [
+    "Commodity prices",
+    "Electricity system capacity",
+    "Electricity system generation",
+    "Emissions",
+    "Energy carriers imports",
+    "Energy carriers production",
+    "Flexibility and storage",
+    "Technology capacity",
+    "Technology operation",
+    "Total system costs",
+  ];
   const methods = [...new Set(clsRows.map((r) => r.surrogate_method).filter(Boolean))].sort();
 
   methodSelect.innerHTML = methods.map((m) => `<option value="${m}" ${m.includes("XGB_HYBRID_tuned") ? "selected" : ""}>${m}</option>`).join("");
@@ -1371,6 +1833,13 @@ function renderClassifierSection(clsRows) {
     const selectedMethod = methodSelect.value;
     const metricCol = metricSelect.value;
     const rows = clsRows.filter((r) => r.surrogate_method === selectedMethod);
+    const strictRows = rows.filter((r) => {
+      const regCat = toNum(r.REG_cat);
+      const clasCat = toNum(r.CLAS_cat);
+      const isDiscrete = regCat !== null && regCat === 0;
+      const isSemiContinuous = regCat !== null && clasCat !== null && regCat > 0 && clasCat > 0;
+      return isDiscrete || isSemiContinuous;
+    });
     currentClassifierRows = rows;
 
     const hm = buildHeatmapTable(rows, metricCol);
@@ -1446,14 +1915,25 @@ function renderClassifierSection(clsRows) {
     );
 
     const grouped = {};
-    rows.forEach((r) => {
+    strictRows.forEach((r) => {
       const g = extractVariableGroup(r.target_variable);
       if (!grouped[g]) grouped[g] = [];
-      grouped[g].push(toNum(r.classifier_accuracy));
+      const acc = toNum(r.classifier_accuracy);
+      if (acc !== null) {
+        grouped[g].push(acc);
+      }
     });
 
-    const x = Object.keys(grouped);
+    const presentGroups = Object.keys(grouped).filter((g) => grouped[g].length > 0);
+    const orderedGroups = [
+      ...rtaOrder.filter((g) => presentGroups.includes(g)),
+      ...presentGroups.filter((g) => !rtaOrder.includes(g)).sort(),
+    ];
+
+    const x = orderedGroups;
     const y = x.map((k) => mean(grouped[k]));
+    const counts = x.map((k) => grouped[k].length);
+    const countLabels = counts.map((n) => `n=${n}`);
 
     Plotly.newPlot(
       "classifier-accuracy-bar",
@@ -1463,6 +1943,11 @@ function renderClassifierSection(clsRows) {
           x,
           y,
           marker: { color: "#2a6f97" },
+          text: countLabels,
+          textposition: "outside",
+          cliponaxis: false,
+          customdata: counts,
+          hovertemplate: "%{x}<br>Classifier Accuracy: %{y:.3f}<br>Target variables: %{customdata}<extra></extra>",
         },
       ],
       baseLayout({
@@ -1472,33 +1957,86 @@ function renderClassifierSection(clsRows) {
       { responsive: true, displayModeBar: false }
     );
 
-    const scatterRows = rows
-      .map((r) => ({
-        x: toNum(r.RTA5reg),
-        y: toNum(r.RTA5pct),
-        label: r.target_variable,
-      }))
-      .filter((r) => r.x !== null && r.y !== null);
+    if (classifierAccuracyNote) {
+      const details = x.map((group, idx) => `${group} (n=${counts[idx]})`).join(", ");
+      classifierAccuracyNote.textContent = `Included target variables per variable type (discrete/semi-continuous only): ${details}.`;
+    }
+
+    const rtaByGroup = new Map();
+    const includedTargets = new Set();
+    strictRows.forEach((r) => {
+      const group = extractVariableGroup(r.target_variable);
+      const r1 = toNum(r.RTA1pct);
+      const r5 = toNum(r.RTA5pct);
+      const r10 = toNum(r.RTA10pct);
+      if (r1 === null || r5 === null || r10 === null) return;
+      const targetKey = normalizeTargetName(r.target_variable);
+      if (targetKey) includedTargets.add(targetKey);
+      if (!rtaByGroup.has(group)) {
+        rtaByGroup.set(group, { r1: [], r5: [], r10: [] });
+      }
+      const bucket = rtaByGroup.get(group);
+      bucket.r1.push(r1 * 100);
+      bucket.r5.push(r5 * 100);
+      bucket.r10.push(r10 * 100);
+    });
+
+    const orderedRtaGroups = rtaOrder.filter((g) => rtaByGroup.has(g));
+    const segWithin1 = [];
+    const seg1to5 = [];
+    const seg5to10 = [];
+
+    orderedRtaGroups.forEach((group) => {
+      const bucket = rtaByGroup.get(group);
+      const r1 = Math.max(0, Math.min(100, mean(bucket.r1)));
+      const r5 = Math.max(r1, Math.min(100, mean(bucket.r5)));
+      const r10 = Math.max(r5, Math.min(100, mean(bucket.r10)));
+      segWithin1.push(r1);
+      seg1to5.push(r5 - r1);
+      seg5to10.push(r10 - r5);
+    });
 
     Plotly.newPlot(
-      "classifier-rta-scatter",
+      "classifier-rta-stacked",
       [
         {
-          type: "scatter",
-          mode: "markers",
-          x: scatterRows.map((r) => r.x),
-          y: scatterRows.map((r) => r.y),
-          text: scatterRows.map((r) => r.label),
-          marker: { color: "#d94e18", size: 7, opacity: 0.7 },
-          hovertemplate: "%{text}<br>RTA5reg=%{x}<br>RTA5hybrid=%{y}<extra></extra>",
+          type: "bar",
+          name: "RTA1%",
+          x: orderedRtaGroups,
+          y: segWithin1,
+          marker: { color: "#2e7d32" },
+          hovertemplate: "%{x}<br>RTA1%: %{y:.2f}%<extra></extra>",
+        },
+        {
+          type: "bar",
+          name: "RTA5%-RTA1%",
+          x: orderedRtaGroups,
+          y: seg1to5,
+          marker: { color: "#d32f2f" },
+          hovertemplate: "%{x}<br>1%-5% interval: %{y:.2f}%<extra></extra>",
+        },
+        {
+          type: "bar",
+          name: "RTA10%-RTA5%",
+          x: orderedRtaGroups,
+          y: seg5to10,
+          marker: { color: "#6a1b9a" },
+          hovertemplate: "%{x}<br>5%-10% interval: %{y:.2f}%<extra></extra>",
         },
       ],
       baseLayout({
-        xaxis: { title: "Regularized RTA5 count" },
-        yaxis: { title: "Hybrid RTA5", gridcolor: "#ececec", zeroline: false },
+        barmode: "stack",
+        margin: { t: 26, r: 16, l: 68, b: 145 },
+        xaxis: { title: "Variable Type", tickangle: -35 },
+        yaxis: { title: "Percentage (%)", range: [0, 100], gridcolor: "#ececec", zeroline: false },
+        legend: { orientation: "h", y: 1.15, x: 0 },
       }),
       { responsive: true, displayModeBar: false }
     );
+
+    if (rtaStackedNote) {
+      rtaStackedNote.textContent = `Included target variables: ${includedTargets.size} (discrete/semi-continuous only, with valid RTA1%, RTA5%, and RTA10%).`;
+    }
   }
 
   methodSelect.addEventListener("change", rerender);
@@ -1506,82 +2044,138 @@ function renderClassifierSection(clsRows) {
   rerender();
 }
 
-function renderJointSection(jointRows) {
-  const rows = jointRows.filter((r) => r.surrogate_method === "Informed_XGB_HYBRID");
+function renderJointSection(classifierRows, jointRows) {
+  const clsThreshold20Rows = classifierRows.filter((r) => {
+    const method = String(r.surrogate_method || "").toLowerCase();
+    if (method === "xgb_hybrid20_tuned" || method === "xgb_hybrid_tuned") {
+      return true;
+    }
 
-  const families = ["techStocks", "techUseNet"];
-  const familyRows = families.map((f) => rows.filter((r) => String(r.target_variable || "").includes(f)));
+    const hp = String(r.hyperparameters || "").toLowerCase();
+    return method.includes("xgb_hybrid") && hp.includes("categories_threshold") && /categories_threshold['\"]?\s*:\s*20/.test(hp);
+  });
 
-  Plotly.newPlot(
-    "joint-family-bar",
-    [
-      {
-        type: "bar",
-        x: families,
-        y: familyRows.map((arr) => mean(arr.map((r) => toNum(r.nrmse)))),
-        marker: { color: ["#f77f00", "#118ab2"] },
-      },
-    ],
-    baseLayout({
-      yaxis: { title: "Mean NRMSE", gridcolor: "#ececec", zeroline: false },
-    }),
-    { responsive: true, displayModeBar: false }
-  );
+  const informedRows = jointRows.filter((r) => String(r.surrogate_method || "") === "Informed_XGB_HYBRID");
 
-  Plotly.newPlot(
-    "joint-family-rta",
-    [
-      {
-        type: "bar",
-        x: families,
-        y: familyRows.map((arr) => mean(arr.map((r) => toNum(r.RTA5pct)))),
-        marker: { color: ["#fcbf49", "#4f772d"] },
-      },
-    ],
-    baseLayout({
-      yaxis: { title: "Mean RTA5", gridcolor: "#ececec", zeroline: false },
-    }),
-    { responsive: true, displayModeBar: false }
-  );
+  const clsTargets = new Set(clsThreshold20Rows.map((r) => normalizeTargetName(r.target_variable)).filter(Boolean));
+  const informedTargets = new Set(informedRows.map((r) => normalizeTargetName(r.target_variable)).filter(Boolean));
+  const pairCommonTargets = getPairIntersection(clsTargets, informedTargets);
 
-  const summaryRows = [
+  const methods = [
     {
-      model: "xgb_informed_classifier.py",
-      n: rows.length,
-      nrmse: mean(rows.map((r) => toNum(r.nrmse))),
-      nmae: mean(rows.map((r) => toNum(r.nmae))),
-      rta1: mean(rows.map((r) => toNum(r.RTA1pct))),
-      rta5: mean(rows.map((r) => toNum(r.RTA5pct))),
-      rta10: mean(rows.map((r) => toNum(r.RTA10pct))),
-      cls_acc: mean(rows.map((r) => toNum(r.classifier_accuracy_train) ?? toNum(r.classifier_accuracy))),
+      label: "XGB+classifier",
+      rows: clsThreshold20Rows.filter((r) => pairCommonTargets.has(normalizeTargetName(r.target_variable))),
+      color: "#fcbf49",
+    },
+    {
+      label: "informed_classifier",
+      rows: informedRows.filter((r) => pairCommonTargets.has(normalizeTargetName(r.target_variable))),
+      color: "#6a994e",
     },
   ];
 
-  const table = document.getElementById("joint-summary-table");
-  table.innerHTML = [
-    "<thead><tr><th>Model</th><th>Rows</th><th>Mean NRMSE</th><th>Mean NMAE</th><th>Mean RTA1</th><th>Mean RTA5</th><th>Mean RTA10</th><th>Mean Classifier Accuracy</th></tr></thead>",
-    "<tbody>",
-    ...summaryRows.map(
-      (s) => `<tr><td>${s.model}</td><td>${s.n}</td><td>${fmt(s.nrmse)}</td><td>${fmt(s.nmae)}</td><td>${fmt(s.rta1)}</td><td>${fmt(s.rta5)}</td><td>${fmt(s.rta10)}</td><td>${fmt(s.cls_acc)}</td></tr>`
-    ),
-    "</tbody>",
-  ].join("");
+  const specs = [
+    { key: "nrmse", title: "NRMSE Distribution", yTitle: "NRMSE", scale: 1, decimals: 3 },
+    { key: "nmae", title: "NMAE Distribution", yTitle: "NMAE", scale: 1, decimals: 3 },
+    { key: "RTA1pct", title: "1% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { key: "RTA5pct", title: "5% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { key: "RTA10pct", title: "10% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    {
+      key: "classifier_accuracy_train",
+      fallbackKey: "classifier_accuracy",
+      title: "Classifier Accuracy Distribution",
+      yTitle: "Classifier Accuracy",
+      scale: 1,
+      decimals: 3,
+      range: [0, 1],
+    },
+  ];
 
-  jointSummaryData = summaryRows.map((s) => ({
-    model: s.model,
-    rows: s.n,
-    mean_nrmse: fmt(s.nrmse),
-    mean_nmae: fmt(s.nmae),
-    mean_rta1: fmt(s.rta1),
-    mean_rta5: fmt(s.rta5),
-    mean_rta10: fmt(s.rta10),
-    mean_classifier_accuracy: fmt(s.cls_acc),
-  }));
+  const cols = 3;
+  const rowsN = 2;
+  const layout = baseLayout({
+    showlegend: false,
+    height: 700,
+    margin: { t: 56, r: 20, l: 44, b: 36 },
+    grid: { rows: rowsN, columns: cols, pattern: "independent" },
+    annotations: [],
+  });
+
+  const traces = [];
+
+  specs.forEach((spec, idx) => {
+    const axisNum = idx + 1;
+    const xaxisRef = axisNum === 1 ? "x" : `x${axisNum}`;
+    const yaxisRef = axisNum === 1 ? "y" : `y${axisNum}`;
+
+    methods.forEach((method) => {
+      const values = (method.rows || [])
+        .map((r) => {
+          const primary = toNum(r[spec.key]);
+          if (primary !== null) return primary;
+          return spec.fallbackKey ? toNum(r[spec.fallbackKey]) : null;
+        })
+        .filter((v) => v !== null)
+        .map((v) => v * spec.scale);
+
+      traces.push({
+        type: "box",
+        name: method.label,
+        x: Array(values.length).fill(method.label),
+        y: values,
+        xaxis: xaxisRef,
+        yaxis: yaxisRef,
+        marker: { color: method.color },
+        line: { color: "#5b5b5b", width: 1 },
+        fillcolor: method.color,
+        boxmean: false,
+        boxpoints: false,
+        hovertemplate: `${method.label}<br>%{y:.${spec.decimals}f}<extra></extra>`,
+      });
+    });
+
+    layout[`xaxis${axisNum === 1 ? "" : axisNum}`] = {
+      showline: true,
+      linecolor: "#111111",
+      linewidth: 1.2,
+      tickfont: { size: 12 },
+      categoryorder: "array",
+      categoryarray: methods.map((m) => m.label),
+    };
+
+    layout[`yaxis${axisNum === 1 ? "" : axisNum}`] = {
+      title: spec.yTitle,
+      showgrid: false,
+      zeroline: false,
+      showline: true,
+      linecolor: "#111111",
+      linewidth: 1.2,
+      tickfont: { size: 12 },
+      range: spec.range,
+    };
+
+    const xDomainRef = axisNum === 1 ? "x domain" : `x${axisNum} domain`;
+    const yDomainRef = axisNum === 1 ? "y domain" : `y${axisNum} domain`;
+    layout.annotations.push({
+      text: `<b>${spec.title}</b>`,
+      xref: xDomainRef,
+      yref: yDomainRef,
+      x: 0.5,
+      y: 1.02,
+      showarrow: false,
+      font: { size: 15, color: "#1f2a37" },
+    });
+  });
+
+  Plotly.newPlot("joint-metrics-boxplots", traces, layout, {
+    responsive: true,
+    displayModeBar: false,
+  });
 }
 
 async function main() {
   try {
-    const [regRows, clsRows, jointRows, regSheetRows, clsSheetRows, jointSheetRows, trainingPayload] = await Promise.all([
+    const [regRows, clsRows, jointRows, regSheetRows, clsSheetRows, jointSheetRows, trainingPayload, violationsPayload] = await Promise.all([
       loadCSV("./data/regression_surrogate_run_log.csv"),
       loadCSV("./data/classifier_2fold_performance.csv"),
       loadCSV("./data/joint_learning_informed_classifier_run_log.csv"),
@@ -1589,6 +2183,7 @@ async function main() {
       loadCSV("./data/classifier_datasheet.csv"),
       loadCSV("./data/joint_datasheet.csv"),
       loadJSON("./data/training_value_distributions.json").catch(() => ({ targets: [], target_count_with_variation: 0 })),
+      loadJSON("./data/regression_constraint_violations.json").catch(() => ({ methods: [], common_pair_count: 0 })),
     ]);
 
     dashboardSourceRows = {
@@ -1600,8 +2195,11 @@ async function main() {
     const commonModeSelect = document.getElementById("common-target-mode");
     const recurringOnlySelect = document.getElementById("recurring-only-mode");
     if (commonModeSelect) {
+      commonTargetMode = "common";
+      commonModeSelect.value = "common";
+      commonModeSelect.disabled = true;
       commonModeSelect.addEventListener("change", () => {
-        commonTargetMode = commonModeSelect.value;
+        commonTargetMode = "common";
         renderOverviewSummary();
       });
     }
@@ -1614,9 +2212,9 @@ async function main() {
     }
 
     renderOverviewSummary();
-    renderRegressionSection(regRows);
+    renderRegressionSection(regRows, violationsPayload, trainingPayload);
     renderClassifierSection(clsRows);
-    renderJointSection(jointRows);
+    renderJointSection(clsRows, jointRows);
     initTabs();
     initInsightsSubchapters();
     initDatasheetsTab(regSheetRows, clsSheetRows, jointSheetRows);

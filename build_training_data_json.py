@@ -21,6 +21,18 @@ def safe_float(value):
     return v
 
 
+def classify_training_data_type(values: pd.Series):
+    counts = values.value_counts()
+    recurring_value_count = int((counts >= 20).sum())
+    non_recurring_value_count = int((counts < 20).sum())
+
+    if recurring_value_count == 0:
+        return "Continuous", recurring_value_count, non_recurring_value_count
+    if non_recurring_value_count == 0:
+        return "Discrete", recurring_value_count, non_recurring_value_count
+    return "Semi-continuous", recurring_value_count, non_recurring_value_count
+
+
 def summarize_outcome(group: pd.DataFrame):
     values = pd.to_numeric(group["value"], errors="coerce").dropna().astype(float)
     if values.empty:
@@ -32,6 +44,7 @@ def summarize_outcome(group: pd.DataFrame):
 
     counts = values.value_counts()
     recurring = sorted(float(v) for v, c in counts.items() if c >= 20)
+    data_type, recurring_value_count, non_recurring_value_count = classify_training_data_type(values)
 
     # Keep a fixed 50-bin histogram, similar to main.py.
     hist_counts, edges = np.histogram(values, bins=50)
@@ -62,6 +75,9 @@ def summarize_outcome(group: pd.DataFrame):
         "bin_centers": [safe_float(v) for v in centers],
         "bin_counts": [int(v) for v in hist_counts.tolist()],
         "recurring_values": [safe_float(v) for v in recurring[:25]],
+        "data_type": data_type,
+        "recurring_value_count": recurring_value_count,
+        "non_recurring_value_count": non_recurring_value_count,
     }
 
 
