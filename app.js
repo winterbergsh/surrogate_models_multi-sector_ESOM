@@ -1964,7 +1964,7 @@ function renderClassifierSection(clsRows) {
 
     const rtaByGroup = new Map();
     const includedTargets = new Set();
-    strictRows.forEach((r) => {
+    rows.forEach((r) => {
       const group = extractVariableGroup(r.target_variable);
       const r1 = toNum(r.RTA1pct);
       const r5 = toNum(r.RTA5pct);
@@ -1981,13 +1981,22 @@ function renderClassifierSection(clsRows) {
       bucket.r10.push(r10 * 100);
     });
 
-    const orderedRtaGroups = rtaOrder.filter((g) => rtaByGroup.has(g));
+    const orderedRtaGroups = [
+      ...rtaOrder,
+      ...[...rtaByGroup.keys()].filter((g) => !rtaOrder.includes(g)).sort(),
+    ];
     const segWithin1 = [];
     const seg1to5 = [];
     const seg5to10 = [];
 
     orderedRtaGroups.forEach((group) => {
       const bucket = rtaByGroup.get(group);
+      if (!bucket || !bucket.r1.length || !bucket.r5.length || !bucket.r10.length) {
+        segWithin1.push(0);
+        seg1to5.push(0);
+        seg5to10.push(0);
+        return;
+      }
       const r1 = Math.max(0, Math.min(100, mean(bucket.r1)));
       const r5 = Math.max(r1, Math.min(100, mean(bucket.r5)));
       const r10 = Math.max(r5, Math.min(100, mean(bucket.r10)));
@@ -2035,7 +2044,7 @@ function renderClassifierSection(clsRows) {
     );
 
     if (rtaStackedNote) {
-      rtaStackedNote.textContent = `Included target variables: ${includedTargets.size} (discrete/semi-continuous only, with valid RTA1%, RTA5%, and RTA10%).`;
+      rtaStackedNote.textContent = `Included target variables: ${includedTargets.size} (all data types, with valid RTA1%, RTA5%, and RTA10%).`;
     }
   }
 
