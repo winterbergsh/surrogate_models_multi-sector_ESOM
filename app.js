@@ -1501,13 +1501,13 @@ function renderSection2MetricDistributions(regRows, clsRows, jointRows) {
   ];
 
   const specs = [
-    { key: "nrmse", title: "NRMSE Distribution", yTitle: "NRMSE", scale: 1, decimals: 3 },
-    { key: "nmae", title: "NMAE Distribution", yTitle: "NMAE", scale: 1, decimals: 3 },
-    { key: "RTA1pct", title: "1% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
-    { key: "RTA5pct", title: "5% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
-    { key: "RTA10pct", title: "10% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
-    { key: "training_time_s", title: "Training Time Distribution", yTitle: "Training Time (s)", scale: 1, decimals: 2 },
-    { key: "running_time_s", title: "Running Time Distribution", yTitle: "Running Time (s)", scale: 1, decimals: 6 },
+    { key: "nrmse", noteLabel: "NRMSE", title: "NRMSE Distribution", yTitle: "NRMSE", scale: 1, decimals: 3 },
+    { key: "nmae", noteLabel: "NMAE", title: "NMAE Distribution", yTitle: "NMAE", scale: 1, decimals: 3 },
+    { key: "RTA1pct", noteLabel: "RTA1%", title: "1% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { key: "RTA5pct", noteLabel: "RTA5%", title: "5% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { key: "RTA10pct", noteLabel: "RTA10%", title: "10% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { key: "training_time_s", noteLabel: "Training time", title: "Training Time Distribution", yTitle: "Training Time (s)", scale: 1, decimals: 2 },
+    { key: "running_time_s", noteLabel: "Running time", title: "Running Time Distribution", yTitle: "Running Time (s)", scale: 1, decimals: 6 },
   ];
 
   const layout = baseLayout({
@@ -1528,19 +1528,35 @@ function renderSection2MetricDistributions(regRows, clsRows, jointRows) {
   const yDomainBottom = [0.0, 0.44];
 
   const traces = [];
+  const excludedTargetsAny = new Set();
+  const excludedTargetsByMetric = new Map(specs.map((spec) => [spec.key, new Set()]));
   specs.forEach((spec, idx) => {
     const axisNum = idx + 1;
     const xref = axisNum === 1 ? "x" : `x${axisNum}`;
     const yref = axisNum === 1 ? "y" : `y${axisNum}`;
 
     methods.forEach((method) => {
-      const values = (method.rows || [])
-        .map((r) => toNum(r[spec.key]))
-        .filter((v) => v !== null)
-        .map((v) => v * spec.scale);
+      const points = (method.rows || [])
+        .map((r) => ({
+          target: normalizeTargetName(r.target_variable),
+          value: toNum(r[spec.key]),
+        }))
+        .filter((point) => point.target && point.value !== null)
+        .map((point) => ({ ...point, value: point.value * spec.scale }));
+      const values = points.map((point) => point.value);
 
       const stats = computeMatplotlibBoxStats(values);
       if (stats.q1 === null) return;
+
+      const iqr = stats.q3 - stats.q1;
+      const lowBound = stats.q1 - 1.5 * iqr;
+      const highBound = stats.q3 + 1.5 * iqr;
+      points.forEach((point) => {
+        if (point.value < lowBound || point.value > highBound) {
+          excludedTargetsAny.add(point.target);
+          excludedTargetsByMetric.get(spec.key).add(point.target);
+        }
+      });
 
       traces.push({
         type: "box",
@@ -1614,7 +1630,10 @@ function renderSection2MetricDistributions(regRows, clsRows, jointRows) {
     const modeSuffix = recurringOnlyMode === "recurring"
       ? ` (filtered to semi-continuous/discrete targets: ${aligned.recurringTargetSet.size} eligible)`
       : "";
-    noteEl.textContent = `Included shared targets: ${aligned.xgbRows.length}${modeSuffix}.`;
+    const metricSummary = specs
+      .map((spec) => `${spec.noteLabel}: ${excludedTargetsByMetric.get(spec.key).size}`)
+      .join("; ");
+    noteEl.textContent = `Included shared targets: ${aligned.xgbRows.length}${modeSuffix}. Outlier note (1.5×IQR, hidden in boxplots): ${excludedTargetsAny.size} targets are excluded in at least one metric. Per metric: ${metricSummary}.`;
   }
 }
 
@@ -1728,20 +1747,35 @@ function renderRegressionSection(regRows, violationsPayload, trainingPayload) {
   );
 
   const specs = [
-    { sourceKey: "nrmse", title: "NRMSE Distribution", yTitle: "NRMSE", scale: 1, decimals: 3 },
-    { sourceKey: "nmae", title: "NMAE Distribution", yTitle: "NMAE", scale: 1, decimals: 3 },
-    { sourceKey: "RTA1pct", title: "1% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
-    { sourceKey: "RTA5pct", title: "5% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
-    { sourceKey: "RTA10pct", title: "10% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
-    { sourceKey: "training_time_s", title: "Training Time Distribution", yTitle: "Training Time (s)", scale: 1, decimals: 2 },
-    { sourceKey: "running_time_s", title: "Running Time Distribution", yTitle: "Running Time (ms)", scale: 1000, decimals: 2 },
+    { sourceKey: "nrmse", noteLabel: "NRMSE", title: "NRMSE Distribution", yTitle: "NRMSE", scale: 1, decimals: 3 },
+    { sourceKey: "nmae", noteLabel: "NMAE", title: "NMAE Distribution", yTitle: "NMAE", scale: 1, decimals: 3 },
+    { sourceKey: "RTA1pct", noteLabel: "RTA1%", title: "1% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { sourceKey: "RTA5pct", noteLabel: "RTA5%", title: "5% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { sourceKey: "RTA10pct", noteLabel: "RTA10%", title: "10% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { sourceKey: "training_time_s", noteLabel: "Training time", title: "Training Time Distribution", yTitle: "Training Time (s)", scale: 1, decimals: 2 },
+    { sourceKey: "running_time_s", noteLabel: "Running time", title: "Running Time Distribution", yTitle: "Running Time (ms)", scale: 1000, decimals: 2 },
   ];
 
   const traces = [];
+  const excludedTargets = new Set();
+  const excludedTargetsByMetric = new Map(specs.map((spec) => [spec.sourceKey, new Set()]));
 
-  function filterOutliersIQR(values) {
-    const nums = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
-    if (nums.length < 4) return nums;
+  function getIqrFilteredSeries(rows, sourceKey, scale) {
+    const points = rows
+      .map((row) => ({
+        target: normalizeTargetName(row.target_variable),
+        value: toNum(row[sourceKey]),
+      }))
+      .filter((point) => point.target && point.value !== null)
+      .map((point) => ({ ...point, value: point.value * scale }));
+
+    const nums = points.map((point) => point.value).filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+    if (nums.length < 4) {
+      return {
+        values: nums,
+        excluded: new Set(),
+      };
+    }
 
     const q = (arr, p) => {
       const idx = (arr.length - 1) * p;
@@ -1757,7 +1791,19 @@ function renderRegressionSection(regRows, violationsPayload, trainingPayload) {
     const iqr = q3 - q1;
     const low = q1 - 1.5 * iqr;
     const high = q3 + 1.5 * iqr;
-    return nums.filter((v) => v >= low && v <= high);
+
+    const kept = [];
+    const excluded = new Set();
+    points.forEach((point) => {
+      if (point.value >= low && point.value <= high) {
+        kept.push(point.value);
+      } else {
+        excluded.add(point.target);
+      }
+    });
+
+    kept.sort((a, b) => a - b);
+    return { values: kept, excluded };
   }
 
   const layout = baseLayout({
@@ -1785,11 +1831,12 @@ function renderRegressionSection(regRows, violationsPayload, trainingPayload) {
     const yref = axisNum === 1 ? "y" : `y${axisNum}`;
 
     methods.forEach((m, i) => {
-      const valuesRaw = commonRows[m]
-        .map((r) => toNum(r[spec.sourceKey]))
-        .filter((v) => v !== null)
-        .map((v) => v * spec.scale);
-      const values = filterOutliersIQR(valuesRaw);
+      const series = getIqrFilteredSeries(commonRows[m], spec.sourceKey, spec.scale);
+      const values = series.values;
+      series.excluded.forEach((target) => {
+        excludedTargets.add(target);
+        excludedTargetsByMetric.get(spec.sourceKey).add(target);
+      });
 
       traces.push({
         type: "box",
@@ -1863,6 +1910,14 @@ function renderRegressionSection(regRows, violationsPayload, trainingPayload) {
     responsive: true,
     displayModeBar: false,
   });
+
+  const outlierNote = document.getElementById("regression-metrics-outlier-note");
+  if (outlierNote) {
+    const metricSummary = specs
+      .map((spec) => `${spec.noteLabel}: ${excludedTargetsByMetric.get(spec.sourceKey).size}`)
+      .join("; ");
+    outlierNote.textContent = `Outlier note: ${excludedTargets.size} of ${commonTargets.size} shared target variables are excluded from at least one boxplot by the 1.5×IQR filter. Per metric, excluded shared targets are ${metricSummary}.`;
+  }
 
   function pearsonCorrelation(a, b) {
     if (!a.length || !b.length || a.length !== b.length) return null;

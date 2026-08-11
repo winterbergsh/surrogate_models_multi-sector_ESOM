@@ -206,6 +206,12 @@ h1 {
   background: #fff;
 }
 
+.chart-note {
+  margin: 0.65rem 0 0;
+  color: var(--muted);
+  font-size: 0.93rem;
+}
+
 #average-metrics-table th {
   background: #edf3fb;
 }
