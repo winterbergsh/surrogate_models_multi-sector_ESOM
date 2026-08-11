@@ -186,6 +186,46 @@ h1 {
   margin-bottom: 0;
 }
 
+.home-grid,
+.about-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.home-card {
+  border: 1px solid #e1e6ee;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.8rem;
+}
+
+.home-card h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1rem;
+}
+
+.home-card p {
+  margin: 0.35rem 0;
+  color: #3f4751;
+}
+
+.home-card ul {
+  margin: 0.35rem 0 0 1rem;
+  padding: 0;
+  color: #3f4751;
+}
+
+.home-steps {
+  margin: 0.35rem 0 0 1.15rem;
+  padding: 0;
+  color: #3f4751;
+}
+
+.home-steps li {
+  margin: 0.3rem 0;
+}
+
 .cards {
   display: grid;
   gap: 0.8rem;
