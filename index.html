@@ -53,6 +53,10 @@
               <h2>Subchapter 1: GP vs MLP vs XGB</h2>
               <p>Focused comparison for conventional regression methods.</p>
             </div>
+            <div class="paper-summary">
+              <p><strong>Baseline comparison of conventional regressors.</strong> GP, MLP, and XGB show broadly comparable predictive accuracy across shared targets, while computational efficiency differs substantially.</p>
+              <p>XGB consistently shows the shortest training times, whereas GP and MLP require longer training. Prediction times remain below 0.1 ms for all three methods and are negligible relative to ESOM runtimes.</p>
+            </div>
             <div class="controls-row">
               <label for="common-target-mode">Data alignment</label>
               <select id="common-target-mode">
@@ -76,6 +80,10 @@
               <h2>Regression Methods: XGB vs MLP vs GP</h2>
               <p>Data source: test regression methods/surrogate_run_log.csv</p>
             </div>
+            <div class="paper-summary">
+              <p><strong>Distribution overview.</strong> Boxplots summarize NRMSE, NMAE, RTA1%, RTA5%, RTA10%, training time, and prediction time across shared targets for GP, MLP, and XGB.</p>
+              <p>Lower is better for NRMSE, NMAE, training time, and prediction time, while higher is better for RTA metrics. Outliers are removed using Tukey's rule [41] (values beyond 1.5 x IQR).</p>
+            </div>
             <div class="chart-block">
               <div id="regression-metrics-subplots" class="chart regression-figure"></div>
             </div>
@@ -87,6 +95,9 @@
               <h2>Correlation Between Accuracy Metrics: XGB vs MLP vs GP</h2>
               <p>Pairwise method correlations across NRMSE, NMAE, RTA1%, RTA5%, and RTA10%.</p>
             </div>
+            <div class="paper-summary">
+              <p><strong>Correlation context.</strong> Similar predictive behavior is reflected by strong correlations, with XGB vs GP around 0.98 and correlations involving MLP around 0.87.</p>
+            </div>
             <div class="table-wrap">
               <table id="regression-correlation-table"></table>
             </div>
@@ -96,6 +107,9 @@
             <div class="panel-head">
               <h2>Cross-Validation Fold Sensitivity (XGB)</h2>
               <p>Comparison of 5-fold and 7-fold results against the 6-fold XGB baseline.</p>
+            </div>
+            <div class="paper-summary">
+              <p>Sensitivity analysis indicates that varying the number of cross-validation folds has a negligible impact on surrogate performance.</p>
             </div>
             <div class="table-wrap">
               <table id="regression-fold-sensitivity-table"></table>
@@ -109,6 +123,11 @@
             <div class="panel-head">
               <h2>Subchapter 2: XGB+classifier</h2>
               <p>Pairwise comparison and Figure 10 distribution view.</p>
+            </div>
+            <div class="paper-summary">
+              <p><strong>Classifier-regressor performance for heterogeneous outputs.</strong> For targets with recurring values, the classifier-regressor improves RTA and NMAE relative to conventional XGB, with the largest gains in RTA1/5/10.</p>
+              <p>The improvement comes with higher computational cost: training and prediction time increase compared with baseline XGB.</p>
+              <p>The classifier-regressor is trained on shared targets, while performance discussion focuses on recurring-value targets where classification is relevant.</p>
             </div>
             <div class="comparison-grid">
               <section class="compare-block">
@@ -132,6 +151,10 @@
               <h2>XGB vs XGB+classifier Metric Distributions</h2>
               <p>Recreated distribution figure for regressor versus classifier-regressor across seven metrics.</p>
             </div>
+            <div class="paper-summary">
+              <p><strong>Distribution comparison.</strong> Distribution plots compare conventional XGB and the classifier-regressor across recurring-value targets.</p>
+              <p>Outliers are removed using Tukey's rule [41], defined as values outside 1.5 x IQR. This view highlights accuracy gains (especially RTA metrics) alongside higher training/prediction cost.</p>
+            </div>
             <div class="chart-block">
               <div id="xgb-clf-metrics-boxplots" class="chart regression-figure"></div>
               <div id="xgb-clf-metrics-note" class="datasheet-hint"></div>
@@ -141,6 +164,9 @@
               <div class="panel-head">
                 <h2>Boundary Sensitivity (XGB+classifier)</h2>
                 <p>Average metric values for classifier-regressor boundaries X=10, 20, 30, and 40.</p>
+              </div>
+              <div class="paper-summary">
+                <p>Sensitivity analyses indicate that varying the recurrence threshold between 10 and 40 has a negligible effect on classifier-regressor performance.</p>
               </div>
               <div class="controls-row">
                 <label for="boundary-target-filter">Target inclusion</label>
@@ -162,12 +188,19 @@
               <h2>Subchapter 3: Performance vs characteristics</h2>
               <p>Classifier performance figures by variable and data characteristics.</p>
             </div>
+            <div class="paper-summary">
+              <p><strong>Performance across target-variable characteristics.</strong> This chapter examines how data type, variable type, and recurring-value structure relate to predictive accuracy and efficiency.</p>
+            </div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
               <h2>Effect of Adding Classifier</h2>
               <p>Data source: effect adding classifier/2fold_performance.csv</p>
+            </div>
+            <div class="paper-summary">
+              <p><strong>Computational efficiency and data type effects.</strong> Training and prediction times increase with the number of recurring-value categories, while predictive performance varies by target data type.</p>
+              <p>NRMSE tends to be highest for discrete outputs and lower for semi-continuous/continuous outputs, whereas NMAE differences are generally smaller.</p>
             </div>
 
             <div class="controls-row">
@@ -195,6 +228,9 @@
             <div class="panel-head">
               <h2>Classifier Performance Details</h2>
               <p>Additional diagnostics for the selected classifier method.</p>
+            </div>
+            <div class="paper-summary">
+              <p><strong>Energy system representation.</strong> RTA band distributions provide complementary insight beyond NRMSE/NMAE, showing how predictions are distributed across 1%, 5%, and 10% tolerance intervals.</p>
             </div>
             <div class="chart-block">
               <h3>Figure 10. Distribution of Relative Tolerance Accuracy across variable types</h3>
@@ -275,6 +311,10 @@
               <h2>Subchapter 4: Informed classifier-regressor</h2>
               <p>Table-only pairwise comparison plus informed-hybrid distribution analysis.</p>
             </div>
+            <div class="paper-summary">
+              <p><strong>Constraint consistency with informed learning.</strong> The informed classifier-regressor eliminates capacity-to-activity constraint violations while preserving similar predictive performance.</p>
+              <p>Compared with the classifier-regressor baseline, changes in NMAE and RTA metrics are small.</p>
+            </div>
             <div class="comparison-grid">
               <section class="compare-block">
                 <h3>4. XGB+classifier vs informed_classifier (table only)</h3>
@@ -290,6 +330,9 @@
               <h2>Informed Hybrid Metric Distributions</h2>
               <p>Data source: joint learning models/joint_learning_informed_classifier_run_log.csv</p>
             </div>
+            <div class="paper-summary">
+              <p>For the constrained subset, informed learning keeps predictive performance close to the classifier-regressor baseline while improving computational efficiency.</p>
+            </div>
             <div class="chart-block">
               <div id="joint-metrics-boxplots" class="chart joint-metrics-figure"></div>
             </div>
@@ -299,6 +342,9 @@
             <div class="panel-head">
               <h2>Violation Percentage by Method</h2>
               <p>Capacity-activity constraint violations using predicted techUseNet and techStocks (shared tech-period pairs).</p>
+            </div>
+            <div class="paper-summary">
+              <p>Informed learning removes all observed capacity-to-activity constraint violations for the analyzed subset.</p>
             </div>
             <div class="table-wrap">
               <table id="regression-violations-table"></table>
@@ -485,6 +531,6 @@
       <p>Dashboard source data is bundled in ./data for direct static hosting on Netlify.</p>
     </footer>
 
-    <script src="./app.js?v=20260810a"></script>
+    <script src="./app.js?v=20260811a"></script>
   </body>
 </html>

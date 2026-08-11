@@ -1575,7 +1575,7 @@ function renderSection2MetricDistributions(regRows, clsRows, jointRows) {
         boxmean: false,
         boxpoints: false,
         whiskerwidth: 0.8,
-        hovertemplate: `${method.label}<br>%{y:.${spec.decimals}f}<extra></extra>`,
+        hovertemplate: `${method.label}<br>min: %{min:.2f}<br>q1: %{q1:.2f}<br>median: %{median:.2f}<br>q3: %{q3:.2f}<br>max: %{max:.2f}<extra></extra>`,
       });
     });
 
@@ -1599,6 +1599,7 @@ function renderSection2MetricDistributions(regRows, clsRows, jointRows) {
       linecolor: "#111111",
       linewidth: 1.5,
       mirror: true,
+      hoverformat: ".2f",
       range: spec.range,
       tickfont: { size: 11 },
       titlefont: { size: 13 },
@@ -1851,7 +1852,7 @@ function renderRegressionSection(regRows, violationsPayload, trainingPayload) {
         boxmean: false,
         boxpoints: false,
         whiskerwidth: 0.8,
-        hovertemplate: `${labels[m]}<br>%{y:.${spec.decimals}f}<extra></extra>`,
+        hovertemplate: `${labels[m]}<br>min: %{min:.2f}<br>q1: %{q1:.2f}<br>median: %{median:.2f}<br>q3: %{q3:.2f}<br>max: %{max:.2f}<extra></extra>`,
       });
     });
 
@@ -1875,6 +1876,7 @@ function renderRegressionSection(regRows, violationsPayload, trainingPayload) {
       linecolor: "#111111",
       linewidth: 1.5,
       mirror: true,
+      hoverformat: ".2f",
       range: spec.range,
       tickfont: { size: 12 },
       titlefont: { size: 14 },
@@ -2761,7 +2763,7 @@ function renderJointSection(classifierRows, jointRows) {
         fillcolor: method.color,
         boxmean: false,
         boxpoints: false,
-        hovertemplate: `${method.label}<br>%{y:.${spec.decimals}f}<extra></extra>`,
+        hovertemplate: `${method.label}<br>min: %{min:.2f}<br>q1: %{q1:.2f}<br>median: %{median:.2f}<br>q3: %{q3:.2f}<br>max: %{max:.2f}<extra></extra>`,
       });
     });
 
@@ -2781,6 +2783,7 @@ function renderJointSection(classifierRows, jointRows) {
       showline: true,
       linecolor: "#111111",
       linewidth: 1.2,
+      hoverformat: ".2f",
       tickfont: { size: 12 },
       range: spec.range,
     };
