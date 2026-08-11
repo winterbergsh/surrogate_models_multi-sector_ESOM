@@ -1575,6 +1575,7 @@ function renderSection2MetricDistributions(regRows, clsRows, jointRows) {
         boxmean: false,
         boxpoints: false,
         whiskerwidth: 0.8,
+        yhoverformat: ".2f",
         hovertemplate: `${method.label}<br>min: %{min:.2f}<br>q1: %{q1:.2f}<br>median: %{median:.2f}<br>q3: %{q3:.2f}<br>max: %{max:.2f}<extra></extra>`,
       });
     });
@@ -1852,6 +1853,7 @@ function renderRegressionSection(regRows, violationsPayload, trainingPayload) {
         boxmean: false,
         boxpoints: false,
         whiskerwidth: 0.8,
+        yhoverformat: ".2f",
         hovertemplate: `${labels[m]}<br>min: %{min:.2f}<br>q1: %{q1:.2f}<br>median: %{median:.2f}<br>q3: %{q3:.2f}<br>max: %{max:.2f}<extra></extra>`,
       });
     });
@@ -2763,6 +2765,7 @@ function renderJointSection(classifierRows, jointRows) {
         fillcolor: method.color,
         boxmean: false,
         boxpoints: false,
+        yhoverformat: ".2f",
         hovertemplate: `${method.label}<br>min: %{min:.2f}<br>q1: %{q1:.2f}<br>median: %{median:.2f}<br>q3: %{q3:.2f}<br>max: %{max:.2f}<extra></extra>`,
       });
     });
