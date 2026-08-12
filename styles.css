@@ -72,34 +72,6 @@ h1 {
   gap: 1.1rem;
 }
 
-.content-edit-bar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  border: 1px dashed #d1a370;
-  border-radius: 10px;
-  background: #fff8f0;
-}
-
-.content-edit-status {
-  margin-left: 0.55rem;
-  color: var(--muted);
-  font-size: 0.93rem;
-}
-
-body.content-editing [data-edit-key] {
-  outline: none;
-  border-radius: 0;
-  background: transparent;
-}
-
-body.content-editing [data-edit-key] {
-  cursor: text;
-}
-
 .tabs {
   display: flex;
   gap: 0.5rem;
