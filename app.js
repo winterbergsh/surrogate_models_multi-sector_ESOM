@@ -499,26 +499,148 @@ function baseLayout(overrides = {}) {
 function initTabs() {
   const buttons = document.querySelectorAll(".tab-btn");
   const panels = document.querySelectorAll(".tab-panel");
+  const contextEl = document.getElementById("tab-context");
+  const tabItems = [...buttons].map((btn) => ({
+    target: btn.getAttribute("data-tab-target"),
+    label: btn.textContent.trim(),
+  }));
+  const dataMethodsPanelTargets = ["tab-training", "tab-datasheets", "tab-method-code"];
+  const dataMethodsButtons = [...document.querySelectorAll(".data-methods-btn")];
+  let activeDataMethodsTarget = "tab-training";
+
+  function normalizeTopTarget(target) {
+    if (dataMethodsPanelTargets.includes(target)) return "tab-data-methods";
+    return target;
+  }
+
+  function renderTabContext(target) {
+    if (!contextEl || !target) return;
+    const currentTopTarget = normalizeTopTarget(target);
+    const currentTop = tabItems.find((item) => item.target === currentTopTarget);
+    if (!currentTop) return;
+
+    const otherTabs = tabItems
+      .filter((item) => item.target !== currentTopTarget)
+      .map((item) => `<button type="button" class="tab-context-link" data-tab-target="${item.target}">${item.label}</button>`)
+      .join("");
+
+    contextEl.innerHTML = `
+      <span class="tab-context-label">Current tab:</span>
+      <span class="tab-context-active">${currentTop.label}</span>
+      <span class="tab-context-label">Other tabs:</span>
+      ${otherTabs}
+    `;
+
+    contextEl.querySelectorAll(".tab-context-link").forEach((link) => {
+      link.addEventListener("click", () => {
+        activateTab(link.getAttribute("data-tab-target"));
+      });
+    });
+  }
+
+  function resizeChartsIn(rootEl) {
+    if (!rootEl || typeof Plotly === "undefined" || !Plotly.Plots || !Plotly.Plots.resize) return;
+    rootEl.querySelectorAll(".chart").forEach((chartEl) => {
+      if (chartEl.classList.contains("js-plotly-plot")) {
+        Plotly.Plots.resize(chartEl);
+      }
+    });
+  }
+
+  function resizeVisibleChartsForTopTab(currentTopTarget) {
+    if (currentTopTarget === "tab-insights") {
+      const activeChapter = document.querySelector("#tab-insights .insights-chapter.active");
+      if (activeChapter) {
+        resizeChartsIn(activeChapter);
+      }
+      return;
+    }
+
+    if (currentTopTarget === "tab-data-methods") {
+      const activeDataPanel = document.querySelector("#tab-training.active, #tab-datasheets.active, #tab-method-code.active");
+      if (activeDataPanel) {
+        resizeChartsIn(activeDataPanel);
+      }
+      return;
+    }
+
+    const activeTopPanel = document.getElementById(currentTopTarget);
+    if (activeTopPanel) {
+      resizeChartsIn(activeTopPanel);
+    }
+  }
+
+  function activateTab(target) {
+    if (!target) return;
+    const currentTopTarget = normalizeTopTarget(target);
+    if (dataMethodsPanelTargets.includes(target)) {
+      activeDataMethodsTarget = target;
+    }
+    const visibleDataMethodsTarget =
+      currentTopTarget === "tab-data-methods"
+        ? dataMethodsPanelTargets.includes(target)
+          ? target
+          : activeDataMethodsTarget
+        : null;
+
+    buttons.forEach((btn) => {
+      const btnTarget = btn.getAttribute("data-tab-target");
+      const active = btnTarget === currentTopTarget;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+    });
+
+    panels.forEach((panel) => {
+      const isActive =
+        panel.id === currentTopTarget ||
+        (visibleDataMethodsTarget !== null && panel.id === visibleDataMethodsTarget);
+      panel.classList.toggle("active", isActive);
+      panel.setAttribute("aria-hidden", isActive ? "false" : "true");
+    });
+
+    if (visibleDataMethodsTarget && dataMethodsButtons.length) {
+      dataMethodsButtons.forEach((btn) => {
+        const active = btn.getAttribute("data-dm-target") === visibleDataMethodsTarget;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-selected", active ? "true" : "false");
+      });
+    }
+
+    renderTabContext(currentTopTarget);
+
+    // Charts may be initially rendered while hidden; resize after panel becomes visible.
+    window.requestAnimationFrame(() => {
+      resizeVisibleChartsForTopTab(currentTopTarget);
+    });
+  }
 
   buttons.forEach((btn) => {
     btn.addEventListener("click", () => {
       const target = btn.getAttribute("data-tab-target");
-      if (!target) return;
-
-      buttons.forEach((b) => {
-        b.classList.remove("active");
-        b.setAttribute("aria-selected", "false");
-      });
-      btn.classList.add("active");
-      btn.setAttribute("aria-selected", "true");
-
-      panels.forEach((panel) => {
-        const isActive = panel.id === target;
-        panel.classList.toggle("active", isActive);
-        panel.setAttribute("aria-hidden", isActive ? "false" : "true");
-      });
+      activateTab(target);
     });
   });
+
+  document.querySelectorAll(".tab-jump").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      const target = link.getAttribute("data-tab-target");
+      const chapterTarget = link.getAttribute("data-chapter-target");
+      activateTab(target);
+
+      if (chapterTarget) {
+        const chapterBtn = document.querySelector(`.subchapter-btn[data-chapter-target="${chapterTarget}"]`);
+        chapterBtn?.click();
+      }
+
+      const panel = target ? document.getElementById(target) : null;
+      panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+
+  const initialTarget = [...buttons].find((btn) => btn.classList.contains("active"))?.getAttribute("data-tab-target");
+  activateTab(initialTarget || "tab-home");
+  window.dashboardActivateTab = activateTab;
 }
 
 function initInsightsSubchapters() {
@@ -539,6 +661,8 @@ function initInsightsSubchapters() {
       chapter.setAttribute("aria-hidden", active ? "false" : "true");
     });
 
+    document.dispatchEvent(new CustomEvent("insights:chapter-changed", { detail: { targetId } }));
+
     const activeChapter = document.getElementById(targetId);
     if (!activeChapter || typeof Plotly === "undefined" || !Plotly.Plots || !Plotly.Plots.resize) return;
 
@@ -554,6 +678,27 @@ function initInsightsSubchapters() {
       const targetId = btn.getAttribute("data-chapter-target");
       if (!targetId) return;
       showChapter(targetId);
+    });
+  });
+}
+
+function initDataMethodsSubtabs() {
+  const buttons = document.querySelectorAll(".data-methods-btn");
+  if (!buttons.length) return;
+
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.getAttribute("data-dm-target");
+      if (!target) return;
+
+      buttons.forEach((b) => {
+        const active = b === btn;
+        b.classList.toggle("active", active);
+        b.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      if (typeof window.dashboardActivateTab === "function") {
+        window.dashboardActivateTab(target);
+      }
     });
   });
 }
@@ -1749,13 +1894,13 @@ function renderRegressionSection(regRows, violationsPayload, trainingPayload) {
   );
 
   const specs = [
-    { sourceKey: "nrmse", noteLabel: "NRMSE", title: "NRMSE Distribution", yTitle: "NRMSE", scale: 1, decimals: 3 },
-    { sourceKey: "nmae", noteLabel: "NMAE", title: "NMAE Distribution", yTitle: "NMAE", scale: 1, decimals: 3 },
-    { sourceKey: "RTA1pct", noteLabel: "RTA1%", title: "1% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
-    { sourceKey: "RTA5pct", noteLabel: "RTA5%", title: "5% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
-    { sourceKey: "RTA10pct", noteLabel: "RTA10%", title: "10% RTA Distribution", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
-    { sourceKey: "training_time_s", noteLabel: "Training time", title: "Training Time Distribution", yTitle: "Training Time (s)", scale: 1, decimals: 2 },
-    { sourceKey: "running_time_s", noteLabel: "Running time", title: "Running Time Distribution", yTitle: "Running Time (ms)", scale: 1000, decimals: 2 },
+    { sourceKey: "nrmse", noteLabel: "NRMSE", title: "NRMSE", yTitle: "NRMSE", scale: 1, decimals: 3 },
+    { sourceKey: "nmae", noteLabel: "NMAE", title: "NMAE", yTitle: "NMAE", scale: 1, decimals: 3 },
+    { sourceKey: "RTA1pct", noteLabel: "RTA1%", title: "RTA1%", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { sourceKey: "RTA5pct", noteLabel: "RTA5%", title: "RTA5%", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { sourceKey: "RTA10pct", noteLabel: "RTA10%", title: "RTA10%", yTitle: "RTA (%)", scale: 100, decimals: 1, range: [0, 100] },
+    { sourceKey: "training_time_s", noteLabel: "Training time", title: "Training Time", yTitle: "Training Time (s)", scale: 1, decimals: 2 },
+    { sourceKey: "running_time_s", noteLabel: "Running time", title: "Running Time", yTitle: "Running Time (ms)", scale: 1000, decimals: 2 },
   ];
 
   const traces = [];
@@ -1894,9 +2039,9 @@ function renderRegressionSection(regRows, violationsPayload, trainingPayload) {
       xref: xDomainRef,
       yref: yDomainRef,
       x: 0.5,
-      y: 1.02,
+      y: 1.01,
       showarrow: false,
-      font: { size: 16, color: "#111111" },
+      font: { size: 13, color: "#111111" },
       xanchor: "center",
       yanchor: "bottom",
     });
@@ -2859,6 +3004,7 @@ async function main() {
     renderValueDistributionAccuracyFigure(valueDistributionPayload);
     initTabs();
     initInsightsSubchapters();
+    initDataMethodsSubtabs();
     initDatasheetsTab(regSheetRows, clsSheetRows, jointSheetRows);
     initTrainingDataTab(trainingPayload);
 

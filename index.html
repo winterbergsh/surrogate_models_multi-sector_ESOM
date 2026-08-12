@@ -18,7 +18,7 @@
         <p class="kicker">Paper Results Dashboard</p>
         <h1>Surrogate Models for Multi-Sector ESOMs</h1>
         <p class="subtitle">
-          Recreated figures and tables for regression, classifier-augmented, and informed joint-learning models.
+          Data, code and results for regression, classifier-regressor, and informed joint-learning models.
         </p>
       </div>
     </header>
@@ -27,75 +27,83 @@
       <nav class="tabs" role="tablist" aria-label="Dashboard Tabs">
         <button class="tab-btn active" data-tab-target="tab-home" role="tab" aria-selected="true">Home</button>
         <button class="tab-btn" data-tab-target="tab-insights" role="tab" aria-selected="false">Results Dashboard</button>
-        <button class="tab-btn" data-tab-target="tab-training" role="tab" aria-selected="false">Training data</button>
-        <button class="tab-btn" data-tab-target="tab-datasheets" role="tab" aria-selected="false">Full Results Datasheets</button>
-        <button class="tab-btn" data-tab-target="tab-method-code" role="tab" aria-selected="false">Method Code</button>
+        <button class="tab-btn" data-tab-target="tab-data-methods" role="tab" aria-selected="false">Data and Methods</button>
         <button class="tab-btn" data-tab-target="tab-about" role="tab" aria-selected="false">About</button>
       </nav>
+
+      <div id="tab-context" class="tab-context" aria-live="polite"></div>
 
       <div id="tab-home" class="tab-panel active" role="tabpanel">
         <section class="panel">
           <div class="panel-head">
-            <h2>Welcome</h2>
-            <p>Overview and guidance for using the surrogate model dashboard.</p>
-          </div>
-          <div class="paper-summary">
-            <p><strong>Dashboard purpose.</strong> This dashboard recreates key analysis outputs for surrogate-model benchmarking in multi-sector ESOM studies, including accuracy, efficiency, robustness, and constraint-consistency views.</p>
-            <p><strong>What you can do here.</strong> Compare model families, inspect metric distributions, explore target-variable characteristics, and review complete underlying datasheets used to build the figures and tables.</p>
+            <h2>Introduction</h2>
+            <p>This dashboard contains the data, code, results and analysis of the study 'Design and evaluation of surrogate models for multi-sector energy system optimisation models'.</p>
           </div>
         </section>
 
         <section class="panel">
           <div class="panel-head">
             <h2>How To Navigate</h2>
-            <p>Use the tabs below to move from high-level results to detailed data.</p>
+            <p></p>
           </div>
-          <div class="home-grid">
-            <article class="home-card">
+          <div class="home-nav-groups">
+            <article class="home-nav-group home-nav-results">
               <h3>Results Dashboard</h3>
-              <p>Main analysis area with four subchapters:</p>
-              <ul>
-                <li>Conventional regressors (GP, MLP, XGB)</li>
-                <li>XGB + classifier framework</li>
-                <li>Performance vs target characteristics</li>
-                <li>Informed classifier-regressor</li>
-              </ul>
+              <p>Results Dashboard shows the analysis of the study. The first tab contains results of comparing conventional regression methods GP, MLP and XGB for the performance metrics. The second tab contains results of the comparison between conventional XGB and a classifier-regressor XGB method. The third tab shows the performance of surrogate methods for varying ESOM outputs. The fourth tab shows how the constraint-aware method performs compared to the classifier-regressor method.</p>
+              <div class="home-nav-box">
+                <a class="btn btn-soft tab-jump" href="#tab-insights" data-tab-target="tab-insights" data-chapter-target="chapter-regression">1. Regression Methods (GP, MLP, XGB)</a>
+                <a class="btn btn-soft tab-jump" href="#tab-insights" data-tab-target="tab-insights" data-chapter-target="chapter-classifier">2. XGB+classifier</a>
+                <a class="btn btn-soft tab-jump" href="#tab-insights" data-tab-target="tab-insights" data-chapter-target="chapter-performance">3. Performance vs characteristics</a>
+                <a class="btn btn-soft tab-jump" href="#tab-insights" data-tab-target="tab-insights" data-chapter-target="chapter-informed">4. Informed classifier-regressor</a>
+              </div>
             </article>
-            <article class="home-card">
-              <h3>Training data</h3>
-              <p>Inspect training target-variable types, value distributions, and data-type summaries.</p>
+
+            <article class="home-nav-group home-nav-data-methods">
+              <h3>Data and Methods</h3>
+              <p>The Data and Methods tab contains the training data that was used, the full datastes of the results and the method codes. </p>
+              <div class="home-nav-box">
+                <a class="btn btn-soft tab-jump" href="#tab-training" data-tab-target="tab-training">1. Training data</a>
+                <a class="btn btn-soft tab-jump" href="#tab-datasheets" data-tab-target="tab-datasheets">2. Full Results Datasheets</a>
+                <a class="btn btn-soft tab-jump" href="#tab-method-code" data-tab-target="tab-method-code">3. Method Code</a>
+              </div>
             </article>
-            <article class="home-card">
-              <h3>Full Results Datasheets</h3>
-              <p>Search, filter, and paginate complete result tables; download the raw workbook.</p>
-            </article>
-            <article class="home-card">
-              <h3>Method Code</h3>
-              <p>Open and download the method implementation scripts used for the results.</p>
-            </article>
-            <article class="home-card">
+
+            <article class="home-nav-group home-nav-about">
               <h3>About</h3>
-              <p>Project context, ownership, and contact details for support and collaboration.</p>
+              <p>Project purpose, team ownership, and contact points for collaboration, questions, and issue reporting.</p>
+              <div class="home-nav-box">
+                <a class="btn btn-soft tab-jump" href="#tab-about" data-tab-target="tab-about">Open About</a>
+              </div>
             </article>
+          </div>
+        </section>
+      </div>
+
+      <div id="tab-data-methods" class="tab-panel" role="tabpanel" aria-hidden="true">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Supporting Data and Methods</h2>
+            <p>These subchapters hold the supporting data, complete result tables, and method code.</p>
           </div>
         </section>
 
-        <section class="panel">
-          <div class="panel-head">
-            <h2>Quick Start</h2>
-            <p>Suggested workflow for first-time users.</p>
-          </div>
-          <ol class="home-steps">
-            <li>Open <strong>Results Dashboard</strong> and start with Subchapter 1 for baseline model behavior.</li>
-            <li>Move to Subchapter 2 and 3 for classifier effects and target-type sensitivity.</li>
-            <li>Use Subchapter 4 for informed-learning and constraint consistency checks.</li>
-            <li>Use <strong>Full Results Datasheets</strong> to trace any plotted result back to source rows.</li>
-          </ol>
-        </section>
+        <nav class="subchapter-tabs data-methods-tabs" role="tablist" aria-label="Data and Methods Subchapters">
+          <p class="subchapter-help">Select one box to switch the results below.</p>
+          <button class="subchapter-btn data-methods-btn active" data-dm-target="tab-training" role="tab" aria-selected="true">
+            1. Training data
+          </button>
+          <button class="subchapter-btn data-methods-btn" data-dm-target="tab-datasheets" role="tab" aria-selected="false">
+            2. Full Results Datasheets
+          </button>
+          <button class="subchapter-btn data-methods-btn" data-dm-target="tab-method-code" role="tab" aria-selected="false">
+            3. Method Code
+          </button>
+        </nav>
       </div>
 
       <div id="tab-insights" class="tab-panel" role="tabpanel" aria-hidden="true">
         <nav class="subchapter-tabs" role="tablist" aria-label="Insights Subchapters">
+          <p class="subchapter-help">Select one box to switch the results below.</p>
           <button class="subchapter-btn active" data-chapter-target="chapter-regression" role="tab" aria-selected="true">
             1. Regression Methods (GP, MLP, XGB)
           </button>
@@ -111,14 +119,23 @@
         </nav>
 
         <div id="chapter-regression" class="insights-chapter active" role="tabpanel">
-          <section class="panel" id="overview-panel">
+          <section class="panel">
             <div class="panel-head">
-              <h2>Subchapter 1: GP vs MLP vs XGB</h2>
-              <p>Focused comparison for conventional regression methods.</p>
+              <h2>Subchapter 1: Regression Methods (GP, MLP, XGB)</h2>
+              <p>Comparison of conventional regression approaches across shared targets.</p>
             </div>
             <div class="paper-summary">
-              <p><strong>Baseline comparison of conventional regressors.</strong> GP, MLP, and XGB show broadly comparable predictive accuracy across shared targets, while computational efficiency differs substantially.</p>
-              <p>XGB consistently shows the shortest training times, whereas GP and MLP require longer training. Prediction times remain below 0.1 ms for all three methods and are negligible relative to ESOM runtimes.</p>
+              <p>Three conventional regression methods (GP, MLP, and XGB) are compared across 463 shared target variables.</p>
+              <p>The results indicate similar predictive accuracy across methods, while XGB is consistently more computationally efficient.</p>
+            </div>
+          </section>
+
+          <section class="panel" id="overview-panel">
+            <div class="panel-head">
+              <h2>Comparison of conventional regression methods (mean)</h2>
+            </div>
+            <div class="paper-summary">
+               <p>Mean performance metrics are reported for the shared targets so method-level differences can be compared consistently.</p>
             </div>
             <div class="controls-row">
               <label for="common-target-mode">Data alignment</label>
@@ -130,7 +147,7 @@
 
             <div class="comparison-grid">
               <section class="compare-block">
-                <h3>1. Conventional Regression: GP vs MLP vs XGB</h3>
+                <h3>Conventional Regression: GP vs MLP vs XGB (mean)</h3>
                 <div class="table-wrap">
                   <table id="overview-conventional-table"></table>
                 </div>
@@ -140,12 +157,12 @@
 
           <section class="panel">
             <div class="panel-head">
-              <h2>Regression Methods: XGB vs MLP vs GP</h2>
+              <h2>Conventional Regression: GP vs MLP vs XGB (distribution)</h2>
               <p>Data source: test regression methods/surrogate_run_log.csv</p>
             </div>
             <div class="paper-summary">
-              <p><strong>Distribution overview.</strong> Boxplots summarize NRMSE, NMAE, RTA1%, RTA5%, RTA10%, training time, and prediction time across shared targets for GP, MLP, and XGB.</p>
-              <p>Lower is better for NRMSE, NMAE, training time, and prediction time, while higher is better for RTA metrics. Outliers are removed using Tukey's rule [41] (values beyond 1.5 x IQR).</p>
+              <p> Boxplots summarize NRMSE, NMAE, RTA1%, RTA5%, RTA10%, training time, and prediction time across shared targets for GP, MLP, and XGB.</p>
+              <p>Lower is better for NRMSE, NMAE, training time, and prediction time, while higher is better for RTA metrics. Outliers are removed using Tukey's rule (values beyond 1.5 x IQR).</p>
             </div>
             <div class="chart-block">
               <div id="regression-metrics-subplots" class="chart regression-figure"></div>
@@ -159,7 +176,7 @@
               <p>Pairwise method correlations across NRMSE, NMAE, RTA1%, RTA5%, and RTA10%.</p>
             </div>
             <div class="paper-summary">
-              <p><strong>Correlation context.</strong> Similar predictive behavior is reflected by strong correlations, with XGB vs GP around 0.98 and correlations involving MLP around 0.87.</p>
+              <p> Similar predictive behavior is reflected by strong correlations, with XGB vs GP around 0.98 and correlations involving MLP around 0.87.</p>
             </div>
             <div class="table-wrap">
               <table id="regression-correlation-table"></table>
@@ -185,16 +202,26 @@
           <section class="panel">
             <div class="panel-head">
               <h2>Subchapter 2: XGB+classifier</h2>
-              <p>Pairwise comparison and Figure 10 distribution view.</p>
+              <p>Pairwise comparison and distribution analysis.</p>
             </div>
             <div class="paper-summary">
-              <p><strong>Classifier-regressor performance for heterogeneous outputs.</strong> For targets with recurring values, the classifier-regressor improves RTA and NMAE relative to conventional XGB, with the largest gains in RTA1/5/10.</p>
+              <p> For targets with recurring values, the classifier-regressor improves RTA and NMAE relative to conventional XGB, with the largest gains in RTA1/5/10.</p>
               <p>The improvement comes with higher computational cost: training and prediction time increase compared with baseline XGB.</p>
               <p>The classifier-regressor is trained on shared targets, while performance discussion focuses on recurring-value targets where classification is relevant.</p>
             </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>XGB vs XGB+classifier</h2>
+              <p>Direct comparison table across aligned targets.</p>
+            </div>
+            <div class="paper-summary">
+              <p>The table summarizes how adding the classifier changes both accuracy and computational cost for the same target set.</p>
+            </div>
             <div class="comparison-grid">
               <section class="compare-block">
-                <h3>2. XGB vs XGB+classifier</h3>
+                <h3>XGB vs XGB+classifier</h3>
                 <div class="controls-row">
                   <label for="recurring-only-mode">Target type (applies to section 2)</label>
                   <select id="recurring-only-mode">
@@ -215,8 +242,8 @@
               <p>Recreated distribution figure for regressor versus classifier-regressor across seven metrics.</p>
             </div>
             <div class="paper-summary">
-              <p><strong>Distribution comparison.</strong> Distribution plots compare conventional XGB and the classifier-regressor across recurring-value targets.</p>
-              <p>Outliers are removed using Tukey's rule [41], defined as values outside 1.5 x IQR. This view highlights accuracy gains (especially RTA metrics) alongside higher training/prediction cost.</p>
+              <p> Distribution plots compare conventional XGB and the classifier-regressor across recurring-value targets.</p>
+              <p>Outliers are removed using Tukey's rule, defined as values outside 1.5 x IQR. This view highlights accuracy gains (especially RTA metrics) alongside higher training/prediction cost.</p>
             </div>
             <div class="chart-block">
               <div id="xgb-clf-metrics-boxplots" class="chart regression-figure"></div>
@@ -252,7 +279,7 @@
               <p>Classifier performance figures by variable and data characteristics.</p>
             </div>
             <div class="paper-summary">
-              <p><strong>Performance across target-variable characteristics.</strong> This chapter examines how data type, variable type, and recurring-value structure relate to predictive accuracy and efficiency.</p>
+              <p> This chapter examines how data type, variable type, and recurring-value structure relate to predictive accuracy and efficiency.</p>
             </div>
           </section>
 
@@ -262,7 +289,7 @@
               <p>Data source: effect adding classifier/2fold_performance.csv</p>
             </div>
             <div class="paper-summary">
-              <p><strong>Computational efficiency and data type effects.</strong> Training and prediction times increase with the number of recurring-value categories, while predictive performance varies by target data type.</p>
+              <p> Training and prediction times increase with the number of recurring-value categories, while predictive performance varies by target data type.</p>
               <p>NRMSE tends to be highest for discrete outputs and lower for semi-continuous/continuous outputs, whereas NMAE differences are generally smaller.</p>
             </div>
 
@@ -289,14 +316,15 @@
 
           <section class="panel">
             <div class="panel-head">
-              <h2>Classifier Performance Details</h2>
+              <h2> Distribution of RTA across variable types</h2>
               <p>Additional diagnostics for the selected classifier method.</p>
             </div>
             <div class="paper-summary">
-              <p><strong>Energy system representation.</strong> RTA band distributions provide complementary insight beyond NRMSE/NMAE, showing how predictions are distributed across 1%, 5%, and 10% tolerance intervals.</p>
+              <p> RTA band distributions provide complementary insight beyond NRMSE/NMAE, showing how predictions are distributed across 1%, 5%, and 10% tolerance intervals.</p>
+              <p>The selected classifier tends to shift more predictions into tighter tolerance bands, indicating stronger reliability for recurring-value outputs.</p>
             </div>
             <div class="chart-block">
-              <h3>Figure 10. Distribution of Relative Tolerance Accuracy across variable types</h3>
+              <h3>Distribution of Relative Tolerance Accuracy across Variable Types</h3>
               <p>Stacked bars show predictions within 1%, 1-5%, and 5-10% relative error intervals.</p>
               <div id="classifier-rta-stacked" class="chart"></div>
               <div id="classifier-rta-stacked-note" class="datasheet-hint"></div>
@@ -307,6 +335,9 @@
             <div class="panel-head">
               <h2>Classifier Accuracy by Variable Group</h2>
               <p>Average classifier accuracy by variable type for the selected classifier method.</p>
+            </div>
+            <div class="paper-summary">
+              <p>The chart highlights which variable groups are easiest or hardest for the classifier, making it clear where classification strength is concentrated.</p>
             </div>
             <div class="chart-block">
               <div id="classifier-accuracy-bar" class="chart"></div>
@@ -319,6 +350,9 @@
               <h2>Performance by Model-Output Level</h2>
               <p>Average metrics across technology-level, subsystem-level, and system-level target groups.</p>
             </div>
+            <div class="paper-summary">
+              <p>This comparison shows whether performance changes by aggregation level and helps identify where prediction quality is most stable.</p>
+            </div>
             <div class="table-wrap">
               <table id="performance-level-metrics-table"></table>
             </div>
@@ -327,8 +361,11 @@
 
           <section class="panel">
             <div class="panel-head">
-              <h2>Table 14. Results for Output Type Comparison</h2>
+              <h2>Results for Output Type Comparison</h2>
               <p>Average performance metrics for direct outputs versus post-processed outputs.</p>
+            </div>
+            <div class="paper-summary">
+              <p>The table reveals how output representation influences error and tolerance metrics, supporting interpretation of where post-processing helps most.</p>
             </div>
             <div class="table-wrap">
               <table id="output-type-comparison-table"></table>
@@ -338,8 +375,11 @@
 
           <section class="panel">
             <div class="panel-head">
-              <h2>Table 16. Pearson Correlation Matrix (Classifier-Regressor)</h2>
+              <h2>Pearson Correlation Matrix (Classifier-Regressor)</h2>
               <p>Correlation matrix across performance, timing, target spread, value-count structure, and classifier accuracy.</p>
+            </div>
+            <div class="paper-summary">
+              <p>The matrix highlights which properties move together, helping distinguish structural drivers of accuracy from computational-cost effects.</p>
             </div>
             <div class="controls-row">
               <label for="corr-data-type-filter">Target data type</label>
@@ -358,8 +398,11 @@
 
           <section class="panel">
             <div class="panel-head">
-              <h2>Figure 1. Average Accuracy by Value Distribution Type</h2>
+              <h2>Average Accuracy by Value Distribution Type</h2>
               <p>For NRMSE and NMAE, lower is better (left axis). For RTA1%, RTA5%, and RTA10%, higher is better (right axis).</p>
+            </div>
+            <div class="paper-summary">
+              <p>This view compares distribution classes directly and shows where surrogate methods are more robust or more sensitive to value-structure complexity.</p>
             </div>
             <div class="chart-block">
               <div id="value-distribution-accuracy-chart" class="chart"></div>
@@ -375,12 +418,22 @@
               <p>Table-only pairwise comparison plus informed-hybrid distribution analysis.</p>
             </div>
             <div class="paper-summary">
-              <p><strong>Constraint consistency with informed learning.</strong> The informed classifier-regressor eliminates capacity-to-activity constraint violations while preserving similar predictive performance.</p>
+              <p> The informed classifier-regressor eliminates capacity-to-activity constraint violations while preserving similar predictive performance.</p>
               <p>Compared with the classifier-regressor baseline, changes in NMAE and RTA metrics are small.</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>XGB+classifier vs informed_classifier</h2>
+              <p>Direct comparison table for constrained-target behaviour.</p>
+            </div>
+            <div class="paper-summary">
+              <p>The table shows that informed learning preserves core accuracy while improving constraint consistency relative to the classifier-regressor baseline.</p>
             </div>
             <div class="comparison-grid">
               <section class="compare-block">
-                <h3>4. XGB+classifier vs informed_classifier (table only)</h3>
+                <h3>XGB+classifier vs informed_classifier</h3>
                 <div class="table-wrap">
                   <table id="overview-clf-vs-informed-table"></table>
                 </div>
@@ -418,6 +471,9 @@
             <div class="panel-head">
               <h2>Constraint Violations by Technology</h2>
               <p>Shared 2050 technology set (87 rows). Shows whether each method violates the capacity-activity constraint for that technology.</p>
+            </div>
+            <div class="paper-summary">
+              <p>This breakdown pinpoints where violations occur and confirms that informed learning systematically suppresses violations across technologies.</p>
             </div>
             <div id="regression-violation-technology-averages" class="cards"></div>
             <div class="controls-row">
@@ -595,9 +651,6 @@
             <h2>About This Dashboard</h2>
             <p>Project background and contacts.</p>
           </div>
-          <div class="paper-summary">
-            <p>This dashboard provides a reproducible, static view of surrogate-model evaluation outputs for multi-sector ESOM applications, including model-accuracy, computational-efficiency, and feasibility diagnostics.</p>
-          </div>
         </section>
 
         <section class="panel">
@@ -618,7 +671,6 @@
               <p><strong>Dr. Amir Fattahi:</strong> amir.fattahi@tno.nl</p>
               <p><strong>Dr. Rebeka Béres:</strong> rebeka.beres@tno.nl</p>
               <p><strong>Repository:</strong> github.com/winterbergsh/surrogate_models_multi-sector_ESOM</p>
-              <p><strong>Support:</strong> Open an issue or contact the maintainer directly.</p>
             </article>
           </div>
         </section>
@@ -629,6 +681,6 @@
       <p>Dashboard source data is bundled in ./data for direct static hosting on Netlify.</p>
     </footer>
 
-    <script src="./app.js?v=20260812b"></script>
+    <script src="./app.js?v=20260812i"></script>
   </body>
 </html>
