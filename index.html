@@ -33,63 +33,75 @@
         <button class="tab-btn" data-tab-target="tab-about" role="tab" aria-selected="false">About</button>
       </nav>
 
+      <div class="content-edit-bar">
+        <div>
+          <strong>Page text editing</strong>
+          <span id="content-edit-status" class="content-edit-status">Editing is off.</span>
+        </div>
+        <div class="download-row compact">
+          <button id="content-edit-toggle" class="btn" type="button">Edit text</button>
+          <button id="content-edit-save" class="btn btn-soft" type="button">Save changes</button>
+          <button id="content-edit-reset" class="btn btn-soft" type="button">Reset text</button>
+        </div>
+      </div>
+
       <div id="tab-home" class="tab-panel active" role="tabpanel">
         <section class="panel">
           <div class="panel-head">
-            <h2>Welcome</h2>
-            <p>Overview and guidance for using the surrogate model dashboard.</p>
+            <h2 data-edit-key="home-welcome-title">Welcome</h2>
+            <p data-edit-key="home-welcome-lead">Overview and guidance for using the surrogate model dashboard.</p>
           </div>
           <div class="paper-summary">
-            <p><strong>Dashboard purpose.</strong> This dashboard recreates key analysis outputs for surrogate-model benchmarking in multi-sector ESOM studies, including accuracy, efficiency, robustness, and constraint-consistency views.</p>
-            <p><strong>What you can do here.</strong> Compare model families, inspect metric distributions, explore target-variable characteristics, and review complete underlying datasheets used to build the figures and tables.</p>
+            <p data-edit-key="home-purpose"><strong>Dashboard purpose.</strong> This dashboard recreates key analysis outputs for surrogate-model benchmarking in multi-sector ESOM studies, including accuracy, efficiency, robustness, and constraint-consistency views.</p>
+            <p data-edit-key="home-capabilities"><strong>What you can do here.</strong> Compare model families, inspect metric distributions, explore target-variable characteristics, and review complete underlying datasheets used to build the figures and tables.</p>
           </div>
         </section>
 
         <section class="panel">
           <div class="panel-head">
-            <h2>How To Navigate</h2>
-            <p>Use the tabs below to move from high-level results to detailed data.</p>
+            <h2 data-edit-key="home-nav-title">How To Navigate</h2>
+            <p data-edit-key="home-nav-lead">Use the tabs below to move from high-level results to detailed data.</p>
           </div>
           <div class="home-grid">
             <article class="home-card">
-              <h3>Results Dashboard</h3>
-              <p>Main analysis area with four subchapters:</p>
+              <h3 data-edit-key="home-card-results-title">Results Dashboard</h3>
+              <p data-edit-key="home-card-results-lead">Main analysis area with four subchapters:</p>
               <ul>
-                <li>Conventional regressors (GP, MLP, XGB)</li>
-                <li>XGB + classifier framework</li>
-                <li>Performance vs target characteristics</li>
-                <li>Informed classifier-regressor</li>
+                <li data-edit-key="home-card-results-1">Conventional regressors (GP, MLP, XGB)</li>
+                <li data-edit-key="home-card-results-2">XGB + classifier framework</li>
+                <li data-edit-key="home-card-results-3">Performance vs target characteristics</li>
+                <li data-edit-key="home-card-results-4">Informed classifier-regressor</li>
               </ul>
             </article>
             <article class="home-card">
-              <h3>Training data</h3>
-              <p>Inspect training target-variable types, value distributions, and data-type summaries.</p>
+              <h3 data-edit-key="home-card-training-title">Training data</h3>
+              <p data-edit-key="home-card-training-body">Inspect training target-variable types, value distributions, and data-type summaries.</p>
             </article>
             <article class="home-card">
-              <h3>Full Results Datasheets</h3>
-              <p>Search, filter, and paginate complete result tables; download the raw workbook.</p>
+              <h3 data-edit-key="home-card-datasheets-title">Full Results Datasheets</h3>
+              <p data-edit-key="home-card-datasheets-body">Search, filter, and paginate complete result tables; download the raw workbook.</p>
             </article>
             <article class="home-card">
-              <h3>Method Code</h3>
-              <p>Open and download the method implementation scripts used for the results.</p>
+              <h3 data-edit-key="home-card-code-title">Method Code</h3>
+              <p data-edit-key="home-card-code-body">Open and download the method implementation scripts used for the results.</p>
             </article>
             <article class="home-card">
-              <h3>About</h3>
-              <p>Project context, ownership, and contact details for support and collaboration.</p>
+              <h3 data-edit-key="home-card-about-title">About</h3>
+              <p data-edit-key="home-card-about-body">Project context, ownership, and contact details for support and collaboration.</p>
             </article>
           </div>
         </section>
 
         <section class="panel">
           <div class="panel-head">
-            <h2>Quick Start</h2>
-            <p>Suggested workflow for first-time users.</p>
+            <h2 data-edit-key="home-quickstart-title">Quick Start</h2>
+            <p data-edit-key="home-quickstart-lead">Suggested workflow for first-time users.</p>
           </div>
           <ol class="home-steps">
-            <li>Open <strong>Results Dashboard</strong> and start with Subchapter 1 for baseline model behavior.</li>
-            <li>Move to Subchapter 2 and 3 for classifier effects and target-type sensitivity.</li>
-            <li>Use Subchapter 4 for informed-learning and constraint consistency checks.</li>
-            <li>Use <strong>Full Results Datasheets</strong> to trace any plotted result back to source rows.</li>
+            <li data-edit-key="home-quickstart-1">Open <strong>Results Dashboard</strong> and start with Subchapter 1 for baseline model behavior.</li>
+            <li data-edit-key="home-quickstart-2">Move to Subchapter 2 and 3 for classifier effects and target-type sensitivity.</li>
+            <li data-edit-key="home-quickstart-3">Use Subchapter 4 for informed-learning and constraint consistency checks.</li>
+            <li data-edit-key="home-quickstart-4">Use <strong>Full Results Datasheets</strong> to trace any plotted result back to source rows.</li>
           </ol>
         </section>
       </div>
@@ -592,33 +604,33 @@
       <div id="tab-about" class="tab-panel" role="tabpanel" aria-hidden="true">
         <section class="panel">
           <div class="panel-head">
-            <h2>About This Dashboard</h2>
-            <p>Project background and contacts.</p>
+            <h2 data-edit-key="about-title">About This Dashboard</h2>
+            <p data-edit-key="about-lead">Project background and contacts.</p>
           </div>
           <div class="paper-summary">
-            <p>This dashboard provides a reproducible, static view of surrogate-model evaluation outputs for multi-sector ESOM applications, including model-accuracy, computational-efficiency, and feasibility diagnostics.</p>
+            <p data-edit-key="about-summary">This dashboard provides a reproducible, static view of surrogate-model evaluation outputs for multi-sector ESOM applications, including model-accuracy, computational-efficiency, and feasibility diagnostics.</p>
           </div>
         </section>
 
         <section class="panel">
           <div class="panel-head">
-            <h2>Contact Details</h2>
-            <p>Use the contacts below for questions, collaboration, or issue reporting.</p>
+            <h2 data-edit-key="about-contact-title">Contact Details</h2>
+            <p data-edit-key="about-contact-lead">Use the contacts below for questions, collaboration, or issue reporting.</p>
           </div>
           <div class="about-grid">
             <article class="home-card">
-              <h3>Maintainer</h3>
-              <p><strong>Name:</strong> S. H. Winterberg</p>
-              <p><strong>Email:</strong> s.h.winterberg@students.uu.nl</p>
-              <p><strong>Role:</strong> Dashboard development and result integration</p>
+              <h3 data-edit-key="about-maintainer-title">Maintainer</h3>
+              <p data-edit-key="about-maintainer-name"><strong>Name:</strong> S. H. Winterberg</p>
+              <p data-edit-key="about-maintainer-email"><strong>Email:</strong> s.h.winterberg@students.uu.nl</p>
+              <p data-edit-key="about-maintainer-role"><strong>Role:</strong> Dashboard development and result integration</p>
             </article>
             <article class="home-card">
-              <h3>Project Team</h3>
-              <p><strong>Team:</strong> Surrogate Modeling for Multi-sector ESOMs</p>
-              <p><strong>Dr. Amir Fattahi:</strong> amir.fattahi@tno.nl</p>
-              <p><strong>Dr. Rebeka Béres:</strong> rebeka.beres@tno.nl</p>
-              <p><strong>Repository:</strong> github.com/winterbergsh/surrogate_models_multi-sector_ESOM</p>
-              <p><strong>Support:</strong> Open an issue or contact the maintainer directly.</p>
+              <h3 data-edit-key="about-team-title">Project Team</h3>
+              <p data-edit-key="about-team-name"><strong>Team:</strong> Surrogate Modeling for Multi-sector ESOMs</p>
+              <p data-edit-key="about-team-amir"><strong>Dr. Amir Fattahi:</strong> amir.fattahi@tno.nl</p>
+              <p data-edit-key="about-team-rebeka"><strong>Dr. Rebeka Béres:</strong> rebeka.beres@tno.nl</p>
+              <p data-edit-key="about-team-repo"><strong>Repository:</strong> github.com/winterbergsh/surrogate_models_multi-sector_ESOM</p>
+              <p data-edit-key="about-team-support"><strong>Support:</strong> Open an issue or contact the maintainer directly.</p>
             </article>
           </div>
         </section>
@@ -629,6 +641,6 @@
       <p>Dashboard source data is bundled in ./data for direct static hosting on Netlify.</p>
     </footer>
 
-    <script src="./app.js?v=20260811b"></script>
+    <script src="./app.js?v=20260812a"></script>
   </body>
 </html>

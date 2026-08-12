@@ -67,6 +67,10 @@ let dashboardSourceRows = {
 };
 let commonTargetMode = "all";
 let recurringOnlyMode = "all";
+let contentEditingEnabled = false;
+
+const CONTENT_EDIT_STORAGE_KEY = "surrogate-dashboard-content-overrides-v1";
+const editableContentDefaults = new Map();
 
 const trainingDataState = {
   targets: [],
@@ -519,6 +523,119 @@ function initTabs() {
       });
     });
   });
+}
+
+function readEditableContentStore() {
+  try {
+    return JSON.parse(localStorage.getItem(CONTENT_EDIT_STORAGE_KEY) || "{}");
+  } catch (_err) {
+    return {};
+  }
+}
+
+function writeEditableContentStore(store) {
+  try {
+    localStorage.setItem(CONTENT_EDIT_STORAGE_KEY, JSON.stringify(store));
+  } catch (_err) {
+    // Ignore storage quota and privacy mode failures.
+  }
+}
+
+function captureEditableDefaults() {
+  document.querySelectorAll("[data-edit-key]").forEach((el) => {
+    const key = el.getAttribute("data-edit-key");
+    if (!key || editableContentDefaults.has(key)) return;
+    editableContentDefaults.set(key, el.innerHTML);
+  });
+}
+
+function applyEditableContent() {
+  const store = readEditableContentStore();
+  document.querySelectorAll("[data-edit-key]").forEach((el) => {
+    const key = el.getAttribute("data-edit-key");
+    if (!key) return;
+    if (Object.prototype.hasOwnProperty.call(store, key)) {
+      el.innerHTML = store[key];
+    } else if (editableContentDefaults.has(key)) {
+      el.innerHTML = editableContentDefaults.get(key);
+    }
+  });
+}
+
+function setEditableContentMode(enabled) {
+  contentEditingEnabled = enabled;
+  document.body.classList.toggle("content-editing", enabled);
+
+  document.querySelectorAll("[data-edit-key]").forEach((el) => {
+    el.setAttribute("contenteditable", enabled ? "true" : "false");
+    el.setAttribute("spellcheck", enabled ? "true" : "false");
+  });
+
+  const toggleBtn = document.getElementById("content-edit-toggle");
+  const status = document.getElementById("content-edit-status");
+  if (toggleBtn) {
+    toggleBtn.textContent = enabled ? "Stop editing" : "Edit text";
+  }
+  if (status) {
+    status.textContent = enabled ? "Editing is on. Changes save locally in this browser." : "Editing is off.";
+  }
+}
+
+function saveEditableContent() {
+  const store = {};
+  document.querySelectorAll("[data-edit-key]").forEach((el) => {
+    const key = el.getAttribute("data-edit-key");
+    if (!key) return;
+    store[key] = el.innerHTML;
+  });
+  writeEditableContentStore(store);
+}
+
+function resetEditableContent() {
+  try {
+    localStorage.removeItem(CONTENT_EDIT_STORAGE_KEY);
+  } catch (_err) {
+    // Ignore storage failures.
+  }
+  document.querySelectorAll("[data-edit-key]").forEach((el) => {
+    const key = el.getAttribute("data-edit-key");
+    if (!key || !editableContentDefaults.has(key)) return;
+    el.innerHTML = editableContentDefaults.get(key);
+  });
+}
+
+function initContentEditing() {
+  captureEditableDefaults();
+  applyEditableContent();
+  setEditableContentMode(false);
+
+  document.addEventListener("input", (event) => {
+    const target = event.target;
+    if (!target || !target.matches || !target.matches("[data-edit-key]")) return;
+    saveEditableContent();
+  });
+
+  const toggleBtn = document.getElementById("content-edit-toggle");
+  const saveBtn = document.getElementById("content-edit-save");
+  const resetBtn = document.getElementById("content-edit-reset");
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => setEditableContentMode(!contentEditingEnabled));
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener("click", () => {
+      saveEditableContent();
+      setEditableContentMode(contentEditingEnabled);
+    });
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      resetEditableContent();
+      setEditableContentMode(contentEditingEnabled);
+    });
+  }
 }
 
 function initInsightsSubchapters() {
@@ -2857,6 +2974,7 @@ async function main() {
     renderPerformanceLevelMetricsTable();
     renderOutputTypeComparisonTable();
     renderValueDistributionAccuracyFigure(valueDistributionPayload);
+    initContentEditing();
     initTabs();
     initInsightsSubchapters();
     initDatasheetsTab(regSheetRows, clsSheetRows, jointSheetRows);
