@@ -239,12 +239,14 @@ h1 {
   color: #3f145b;
 }
 
-.insights-chapter {
+.insights-chapter,
+.supplementary-chapter {
   display: none;
   gap: 1.1rem;
 }
 
-.insights-chapter.active {
+.insights-chapter.active,
+.supplementary-chapter.active {
   display: grid;
 }
 

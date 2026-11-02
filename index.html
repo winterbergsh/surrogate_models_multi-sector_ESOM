@@ -27,6 +27,7 @@
       <nav class="tabs" role="tablist" aria-label="Dashboard Tabs">
         <button class="tab-btn active" data-tab-target="tab-home" role="tab" aria-selected="true">Home</button>
         <button class="tab-btn" data-tab-target="tab-insights" role="tab" aria-selected="false">Results Dashboard</button>
+        <button class="tab-btn" data-tab-target="tab-supplementary" role="tab" aria-selected="false">Supplementary Materials</button>
         <button class="tab-btn" data-tab-target="tab-data-methods" role="tab" aria-selected="false">Data and Methods</button>
         <button class="tab-btn" data-tab-target="tab-about" role="tab" aria-selected="false">About</button>
       </nav>
@@ -99,6 +100,49 @@
             3. Method Code
           </button>
         </nav>
+      </div>
+
+      <div id="tab-supplementary" class="tab-panel" role="tabpanel" aria-hidden="true">
+        <nav class="subchapter-tabs" role="tablist" aria-label="Supplementary Materials Subchapters">
+          <p class="subchapter-help">Select one box to switch the results below.</p>
+          <button class="subchapter-btn supplementary-btn active" data-supp-target="chapter-confusion" role="tab" aria-selected="true">
+            1. Confusion matrices classifiers
+          </button>
+        </nav>
+
+        <div id="chapter-confusion" class="supplementary-chapter active" role="tabpanel">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Summary of misclassifications</h2>
+              <p id="confusion-types-intro"></p>
+            </div>
+            <div class="table-wrap">
+              <table id="confusion-types-table"></table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Confusion matrix per target variable</h2>
+              <p>Test-set confusion matrices of the classifier in the XGBoost + classifier method. Classes are the recurring values (including zero where it recurs), plus a final REST class for non-recurring values.</p>
+            </div>
+            <div class="controls-row">
+              <label for="confusion-method-select">Classifier threshold</label>
+              <select id="confusion-method-select"></select>
+              <label for="confusion-target-select">Target variable</label>
+              <select id="confusion-target-select"></select>
+              <label for="confusion-normalize-select">Display</label>
+              <select id="confusion-normalize-select">
+                <option value="counts" selected>Counts</option>
+                <option value="row">Row-normalised (% of actual class)</option>
+              </select>
+            </div>
+            <p id="confusion-summary-note" class="chart-note"></p>
+            <div class="chart-block">
+              <div id="confusion-matrix-chart" class="chart"></div>
+            </div>
+          </section>
+        </div>
       </div>
 
       <div id="tab-insights" class="tab-panel" role="tabpanel" aria-hidden="true">
@@ -681,6 +725,6 @@
       <p>Dashboard source data is bundled in ./data for direct static hosting on Netlify.</p>
     </footer>
 
-    <script src="./app.js?v=20260812i"></script>
+    <script src="./app.js?v=20260812m"></script>
   </body>
 </html>

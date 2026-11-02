@@ -644,7 +644,7 @@ function initTabs() {
 }
 
 function initInsightsSubchapters() {
-  const buttons = document.querySelectorAll(".subchapter-btn");
+  const buttons = document.querySelectorAll("#tab-insights .subchapter-btn");
   const chapters = document.querySelectorAll(".insights-chapter");
   if (!buttons.length || !chapters.length) return;
 
@@ -678,6 +678,29 @@ function initInsightsSubchapters() {
       const targetId = btn.getAttribute("data-chapter-target");
       if (!targetId) return;
       showChapter(targetId);
+    });
+  });
+}
+
+function initSupplementarySubchapters() {
+  const buttons = document.querySelectorAll(".supplementary-btn");
+  const chapters = document.querySelectorAll(".supplementary-chapter");
+  if (!buttons.length || !chapters.length) return;
+
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const targetId = btn.getAttribute("data-supp-target");
+      if (!targetId) return;
+      buttons.forEach((b) => {
+        const active = b === btn;
+        b.classList.toggle("active", active);
+        b.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      chapters.forEach((chapter) => {
+        const active = chapter.id === targetId;
+        chapter.classList.toggle("active", active);
+        chapter.setAttribute("aria-hidden", active ? "false" : "true");
+      });
     });
   });
 }
@@ -2955,9 +2978,191 @@ function renderJointSection(classifierRows, jointRows) {
   });
 }
 
+const CONFUSION_METHODS = [
+  { key: "XGB_HYBRID10_tuned", label: "Threshold 10" },
+  { key: "XGB_HYBRID_tuned", label: "Threshold 20" },
+  { key: "XGB_HYBRID30_tuned", label: "Threshold 30" },
+  { key: "XGB_HYBRID40_tuned", label: "Threshold 40" },
+];
+
+const CONFUSION_ERROR_TYPES = [
+  { key: "NR", label: "Non-recurring value assigned to a recurring value" },
+  { key: "ZN", label: "Zero predicted as non-recurring" },
+  { key: "RN", label: "Recurring value predicted as non-recurring" },
+  { key: "RR", label: "Confusion between non-zero recurring values" },
+  { key: "AZ", label: "Active value predicted as zero" },
+  { key: "ZR", label: "Zero predicted as active (non-zero recurring)" },
+];
+
+function buildConfusionStore(rows) {
+  const store = {};
+  rows.forEach((row) => {
+    const count = toNum(row.count);
+    const actual = toNum(row.actual_class);
+    const predicted = toNum(row.predicted_class);
+    if (count === null || actual === null || predicted === null) return;
+    const methodStore = (store[row.method] ??= {});
+    const target = (methodStore[row.target_variable] ??= { cells: [], labels: new Map(), maxClass: 0 });
+    target.cells.push({ actual, predicted, count });
+    target.labels.set(actual, String(row.actual_recurring_value));
+    target.maxClass = Math.max(target.maxClass, actual, predicted);
+  });
+  return store;
+}
+
+function confusionKind(target, classIdx) {
+  if (target.labels.get(classIdx) === "0.0" && classIdx === 0) return "Z";
+  if (classIdx === target.maxClass && target.labels.get(classIdx) === "REST") return "N";
+  return "R";
+}
+
+function confusionClassLabel(target, classIdx) {
+  const raw = target.labels.get(classIdx);
+  if (raw === undefined) return `${classIdx}: class ${classIdx}`;
+  if (raw === "REST") return `${classIdx}: REST`;
+  const num = toNum(raw);
+  return `${classIdx}: ${num === null ? raw : Number(num.toPrecision(5))}`;
+}
+
+function summarizeConfusionErrors(methodStore) {
+  const counts = Object.fromEntries(CONFUSION_ERROR_TYPES.map((t) => [t.key, 0]));
+  let total = 0;
+  Object.values(methodStore || {}).forEach((target) => {
+    target.cells.forEach((cell) => {
+      if (cell.actual === cell.predicted) return;
+      const a = confusionKind(target, cell.actual);
+      const p = confusionKind(target, cell.predicted);
+      const key = p === "Z" ? "AZ" : a + p;
+      if (key in counts) {
+        counts[key] += cell.count;
+        total += cell.count;
+      }
+    });
+  });
+  return { counts, total };
+}
+
+function initConfusionMatrixSection(rows) {
+  const methodSelect = document.getElementById("confusion-method-select");
+  const targetSelect = document.getElementById("confusion-target-select");
+  const normalizeSelect = document.getElementById("confusion-normalize-select");
+  const noteEl = document.getElementById("confusion-summary-note");
+  const chartEl = document.getElementById("confusion-matrix-chart");
+  const typesTable = document.getElementById("confusion-types-table");
+  const typesIntro = document.getElementById("confusion-types-intro");
+  if (!methodSelect || !targetSelect || !normalizeSelect || !chartEl || !typesTable) return;
+
+  const store = buildConfusionStore(rows);
+  const methods = CONFUSION_METHODS.filter((m) => store[m.key]);
+  if (!methods.length) {
+    noteEl.textContent = "No confusion matrix data available.";
+    return;
+  }
+
+  methodSelect.innerHTML = methods
+    .map((m) => `<option value="${m.key}"${m.label === "Threshold 20" ? " selected" : ""}>${m.label}</option>`)
+    .join("");
+
+  function fillTargets() {
+    const previous = targetSelect.value;
+    const targets = Object.keys(store[methodSelect.value]).sort((a, b) => a.localeCompare(b));
+    targetSelect.innerHTML = targets
+      .map((t) => `<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`)
+      .join("");
+    if (targets.includes(previous)) targetSelect.value = previous;
+  }
+
+  function renderMatrix() {
+    const target = store[methodSelect.value]?.[targetSelect.value];
+    if (!target) return;
+    const n = target.maxClass + 1;
+    const matrix = Array.from({ length: n }, () => Array(n).fill(0));
+    target.cells.forEach((c) => {
+      matrix[c.actual][c.predicted] += c.count;
+    });
+
+    const labels = Array.from({ length: n }, (_, i) => confusionClassLabel(target, i));
+    const rowNormalized = normalizeSelect.value === "row";
+    const total = matrix.flat().reduce((a, b) => a + b, 0);
+    const correct = matrix.reduce((sum, row, i) => sum + row[i], 0);
+    const z = matrix.map((row) => {
+      const rowSum = row.reduce((a, b) => a + b, 0);
+      return row.map((v) => (rowNormalized ? (rowSum ? (v / rowSum) * 100 : null) : v));
+    });
+    const showText = n <= 15;
+    const text = z.map((row, i) =>
+      row.map((v, j) => {
+        if (v === null || matrix[i][j] === 0) return "";
+        return rowNormalized ? `${v.toFixed(0)}%` : String(matrix[i][j]);
+      })
+    );
+
+    noteEl.textContent = `${n} classes, ${total.toLocaleString()} test cases, accuracy ${fmt(total ? (correct / total) * 100 : null, 1)}%.`;
+
+    const size = Math.min(900, Math.max(420, 40 * n + 160));
+    chartEl.style.minHeight = `${size}px`;
+    Plotly.react(
+      chartEl,
+      [
+        {
+          type: "heatmap",
+          x: labels,
+          y: labels,
+          z,
+          customdata: matrix,
+          text: showText ? text : undefined,
+          texttemplate: showText ? "%{text}" : undefined,
+          colorscale: "Blues",
+          hoverongaps: false,
+          hovertemplate: "Actual: %{y}<br>Predicted: %{x}<br>Count: %{customdata}<extra></extra>",
+          colorbar: { title: { text: rowNormalized ? "% of actual" : "Count" } },
+        },
+      ],
+      baseLayout({
+        height: size,
+        margin: { t: 20, r: 20, l: 120, b: 120 },
+        xaxis: { title: { text: "Predicted class" }, type: "category", tickangle: -45, showticklabels: n <= 40 },
+        yaxis: { title: { text: "Actual class" }, type: "category", autorange: "reversed", showticklabels: n <= 40 },
+      }),
+      { responsive: true, displaylogo: false }
+    );
+  }
+
+  function renderTypes() {
+    const summaries = methods.map((m) => ({ ...m, ...summarizeConfusionErrors(store[m.key]) }));
+    typesIntro.textContent = summaries
+      .map((s) => `${s.label}: ${s.total.toLocaleString()} misclassified target-scenario cases`)
+      .join(" | ");
+    const head = `<tr><th>Error type</th>${summaries.map((s) => `<th>${s.label}<br />Share (cases)</th>`).join("")}</tr>`;
+    const body = CONFUSION_ERROR_TYPES.map(
+      (t) =>
+        `<tr><td>${t.label}</td>${summaries
+          .map((s) => `<td>${fmt(s.total ? (s.counts[t.key] / s.total) * 100 : null, 1)}% (${s.counts[t.key].toLocaleString()})</td>`)
+          .join("")}</tr>`
+    ).join("");
+    const foot = `<tr><td><b>Total misclassified</b></td>${summaries.map((s) => `<td><b>${s.total.toLocaleString()}</b></td>`).join("")}</tr>`;
+    typesTable.innerHTML = `<thead>${head}</thead><tbody>${body}${foot}</tbody>`;
+  }
+
+  methodSelect.addEventListener("change", () => {
+    fillTargets();
+    renderMatrix();
+  });
+  targetSelect.addEventListener("change", renderMatrix);
+  normalizeSelect.addEventListener("change", renderMatrix);
+
+  fillTargets();
+  renderMatrix();
+  renderTypes();
+
+  document.querySelector('.supplementary-btn[data-supp-target="chapter-confusion"]')?.addEventListener("click", () => {
+    window.requestAnimationFrame(() => Plotly.Plots.resize(chartEl));
+  });
+}
+
 async function main() {
   try {
-    const [regRows, clsRows, jointRows, regSheetRows, clsSheetRows, jointSheetRows, trainingPayload, violationsPayload, valueDistributionPayload] = await Promise.all([
+    const [regRows, clsRows, jointRows, regSheetRows, clsSheetRows, jointSheetRows, trainingPayload, violationsPayload, valueDistributionPayload, confusionRows] = await Promise.all([
       loadCSV("./data/regression_surrogate_run_log.csv"),
       loadCSV("./data/classifier_2fold_performance.csv"),
       loadCSV("./data/joint_learning_informed_classifier_run_log.csv"),
@@ -2967,6 +3172,7 @@ async function main() {
       loadJSON("./data/training_value_distributions.json").catch(() => ({ targets: [], target_count_with_variation: 0 })),
       loadJSON("./data/regression_constraint_violations.json").catch(() => ({ methods: [], common_pair_count: 0 })),
       loadJSON("./data/value_distribution_metrics.json").catch(() => ({ categories: [] })),
+      loadCSV("./data/saved_classifier_confusion_counts.csv").catch(() => []),
     ]);
 
     dashboardSourceRows = {
@@ -3005,6 +3211,8 @@ async function main() {
     initTabs();
     initInsightsSubchapters();
     initDataMethodsSubtabs();
+    initSupplementarySubchapters();
+    initConfusionMatrixSection(confusionRows);
     initDatasheetsTab(regSheetRows, clsSheetRows, jointSheetRows);
     initTrainingDataTab(trainingPayload);
 
